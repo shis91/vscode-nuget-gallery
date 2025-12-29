@@ -1,4 +1,4 @@
-type UpdateType = "INSTALL" | "UNINSTALL";
+type UpdateType = "INSTALL" | "UNINSTALL" | "UPDATE";
 
 type UpdateProjectRequest = {
   ProjectPath: string;
@@ -9,4 +9,5 @@ type UpdateProjectRequest = {
 
 type UpdateProjectResponse = {
   Project: Project;
+  IsCpmEnabled: boolean;
 };

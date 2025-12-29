@@ -2,35 +2,69 @@ import { IRequestHandler } from "@/common/messaging/core/types";
 import * as vscode from "vscode";
 import ProjectParser from "../utilities/project-parser";
 import TaskExecutor from "../utilities/task-executor";
+import CpmResolver from "../utilities/cpm-resolver";
 
 export default class UpdateProject implements IRequestHandler<UpdateProjectRequest, UpdateProjectResponse> {
   async HandleAsync(request: UpdateProjectRequest): Promise<UpdateProjectResponse> {
-    let skipRestore = vscode.workspace.getConfiguration("NugetGallery").get<string>("skipRestore") ?? "";
-    let command = request.Type == "UNINSTALL" ? "remove" : "add";
-    let args: Array<string> = [command, request.ProjectPath.replace(/\\/g, "/"), "package", request.PackageId];
-    if (request.Type !== "UNINSTALL") {
-      args.push("-v");
-      args.push(request.Version!);
-      if (skipRestore) args.push("--no-restore");
-      // args.push("-s");
-      // args.push(message.source);
+    const skipRestoreConfiguration = vscode.workspace.getConfiguration("NugetGallery").get<string>("skipRestore") ?? "";
+    const isCpmEnabled = CpmResolver.GetPackageVersions(request.ProjectPath) !== null;
+
+    // Don't use --no-restore with CPM as it causes version to be added to csproj
+    const skipRestore: boolean = !!skipRestoreConfiguration && !isCpmEnabled;
+    
+    if (request.Type === "UPDATE") {
+      await this.RemovePackage(request);
+      await this.AddPackage(request, skipRestore);
+    } else if (request.Type === "UNINSTALL") {
+      await this.RemovePackage(request);
+    } else {
+      await this.AddPackage(request, skipRestore);
     }
 
-    let task = new vscode.Task(
-      { type: "dotnet", task: `dotnet add/remove package` },
+    CpmResolver.ClearCache();
+
+    const cpmVersions = CpmResolver.GetPackageVersions(request.ProjectPath);
+    let updatedProject = ProjectParser.Parse(request.ProjectPath, cpmVersions);
+    let result: UpdateProjectResponse = {
+      Project: updatedProject,
+      IsCpmEnabled: isCpmEnabled,
+    };
+    return result;
+  }
+
+  // REMOVE: .NET 10 format: dotnet package remove <PACKAGE_ID> --project <PROJECT>
+  private async RemovePackage(request: UpdateProjectRequest): Promise<void> {
+    const args: Array<string> = ["package", "remove", "--project", request.PackageId, request.ProjectPath.replace(/\\/g, "/")];
+    const task = new vscode.Task(
+      { type: "dotnet", task: `dotnet remove package` },
       vscode.TaskScope.Workspace,
       "nuget-gallery",
       "dotnet",
       new vscode.ShellExecution("dotnet", args)
     );
     task.presentationOptions.reveal = vscode.TaskRevealKind.Silent;
-
     await TaskExecutor.ExecuteTask(task);
+  }
 
-    let updatedProject = ProjectParser.Parse(request.ProjectPath);
-    let result: UpdateProjectResponse = {
-      Project: updatedProject,
-    };
-    return result;
+  // INSTALL: .NET 10 format: dotnet package add <PACKAGE_ID> --project <PROJECT> --version <VERSION>
+  private async AddPackage(request: UpdateProjectRequest, skipRestore: boolean): Promise<void> {
+    const args: Array<string> = ["package", "add", "--project", request.PackageId, request.ProjectPath.replace(/\\/g, "/")];
+    if (request.Version) {
+        args.push("--version");
+        args.push(request.Version);
+      }
+    if (skipRestore) {
+      args.push("--no-restore");
+    }
+
+    const task = new vscode.Task(
+      { type: "dotnet", task: `dotnet add package` },
+      vscode.TaskScope.Workspace,
+      "nuget-gallery",
+      "dotnet",
+      new vscode.ShellExecution("dotnet", args)
+    );
+    task.presentationOptions.reveal = vscode.TaskRevealKind.Silent;
+    await TaskExecutor.ExecuteTask(task);
   }
 }

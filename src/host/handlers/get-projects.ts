@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { IRequestHandler } from "../../common/messaging/core/types";
 import ProjectParser from "../utilities/project-parser";
+import CpmResolver from "../utilities/cpm-resolver";
 
 
 export class GetProjects implements IRequestHandler<GetProjectsRequest, GetProjectsResponse> {
@@ -15,7 +16,8 @@ export class GetProjects implements IRequestHandler<GetProjectsRequest, GetProje
       .map((x) => x.fsPath)
       .forEach((x) => {
         try {
-          let project = ProjectParser.Parse(x);
+          const cpmVersions = CpmResolver.GetPackageVersions(x);
+          let project = ProjectParser.Parse(x, cpmVersions);
           projects.push(project);
         } catch (e) {
           console.error(e);

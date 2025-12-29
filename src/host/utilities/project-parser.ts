@@ -4,7 +4,7 @@ import xpath from "xpath";
 import * as path from "path";
 
 export default class ProjectParser {
-  static Parse(projectPath: string): Project {
+  static Parse(projectPath: string, cpmVersions?: Map<string, string> | null): Project {
     let projectContent = fs.readFileSync(projectPath, "utf8");
     let document = new DOMParser().parseFromString(projectContent);
     if (document == undefined) throw `${projectPath} has invalid content`;
@@ -18,16 +18,18 @@ export default class ProjectParser {
 
     (packagesReferences || []).forEach((p: any) => {
       let version = p.attributes?.getNamedItem("Version");
-      if (version) {
-        version = version.value;
-      } else {
-        version = xpath.select("string(Version)", p);
-        if (!version) {
-          version = null;
+      const packageId = p.attributes?.getNamedItem("Include").value;
+      
+      if (cpmVersions) {
+        let cpmVersion = cpmVersions.get(packageId) || null;    
+        if (cpmVersion) {
+          version = cpmVersion;
         }
+        // TODO: Log warning when package is not found in Directory.Packages.props
       }
+
       let projectPackage: ProjectPackage = {
-        Id: p.attributes?.getNamedItem("Include").value,
+        Id: packageId,
         Version: version,
       };
       project.Packages.push(projectPackage);
