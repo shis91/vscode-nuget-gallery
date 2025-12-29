@@ -53,14 +53,9 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("nuget-gallery.sponsor", async () => {
-      vscode.env.openExternal(vscode.Uri.parse("https://github.com/sponsors/pcislo"));
-    })
-  );
-  context.subscriptions.push(
     vscode.commands.registerCommand("nuget-gallery.reportProblem", async () => {
       vscode.env.openExternal(
-        vscode.Uri.parse("https://github.com/pcislo/vscode-nuget-gallery/issues/new")
+        vscode.Uri.parse("https://github.com/shis91/vscode-nuget-gallery/issues/new")
       );
     })
   );
