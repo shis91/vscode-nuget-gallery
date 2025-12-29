@@ -137,6 +137,7 @@ export class PackageDetailsComponent extends FASTElement {
   }
 
   private async ReloadDependencies() {
+    console.log('test reload');
     this.packageDetails = undefined;
 
     if (!this.source) return;

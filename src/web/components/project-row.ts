@@ -37,7 +37,7 @@ const template = html<ProjectRow>`
                   <vscode-button appearance="icon">
                     <span
                       class="codicon codicon-arrow-circle-up"
-                      @click=${(x) => x.Update("INSTALL")}
+                      @click=${(x) => x.Update("UPDATE")}
                     ></span>
                   </vscode-button>
                 `
@@ -119,7 +119,7 @@ export class ProjectRow extends FASTElement {
     return projectPackage;
   }
 
-  async Update(type: "INSTALL" | "UNINSTALL") {
+  async Update(type: "INSTALL" | "UNINSTALL" | "UPDATE") {
     let request: UpdateProjectRequest = {
       Type: type,
       ProjectPath: this.project.Path,
@@ -133,6 +133,6 @@ export class ProjectRow extends FASTElement {
     );
     this.project.Packages = result.Project.Packages.map((x) => new ProjectPackageViewModel(x));
     this.loaders.Remove(request.PackageId);
-    this.$emit("project-updated");
+    this.$emit("project-updated", { isCpmEnabled: result.IsCpmEnabled });
   }
 }

@@ -145,7 +145,7 @@ const template = html<PackagesView>`
                           @project-updated=${(
                             x,
                             c: ExecutionContext<PackagesView, any>
-                          ) => c.parent.LoadProjectsPackages()}
+                          ) => c.parent.OnProjectUpdated(c.event as CustomEvent)}
                           :project=${(x) => x}
                           :packageId=${(
                             x,
@@ -466,6 +466,17 @@ export class PackagesView extends FASTElement {
 
     for (let i = 0; i < this.projectsPackages.length; i++) {
       this.UpdatePackage(this.projectsPackages[i]);
+    }
+  }
+
+  OnProjectUpdated(event: CustomEvent) {
+    const isCpmEnabled = event.detail?.isCpmEnabled ?? false;
+    if (isCpmEnabled) {
+      // When CPM is enabled, reload all projects as the update affects all of them
+      this.LoadProjects();
+    } else {
+      // For non-CPM projects, just refresh the packages list
+      this.LoadProjectsPackages();
     }
   }
 

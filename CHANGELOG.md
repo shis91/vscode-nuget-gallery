@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for Central Package Management (CPM)
+  - Automatically detects and resolves package versions from `Directory.Packages.props`
+  - Respects individual project opt-out via `<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>`
+  - Prevents `--no-restore` bug that causes versions to be added to project files when CPM is enabled
+  - Automatically refreshes all projects when updating packages in CPM-enabled solutions
+- Package update functionality (remove and re-add with new version)
+
 ### Changed
 
 - Forked from [pcislo/vscode-nuget-gallery](https://github.com/pcislo/vscode-nuget-gallery)
