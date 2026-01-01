@@ -9,6 +9,15 @@ module.exports = defineConfig([
 		mocha: {
 			ui: 'tdd',
 			timeout: 20000
+		},
+		launchArgs: [
+			'--disable-gpu',
+			'--disable-workspace-trust',
+			'--disable-telemetry'
+		],
+		env: {
+			VSCODE_NUGET_GALLERY_TEST: 'true',
+			OTEL_TRACES_EXPORTER: 'none'
 		}
 	}
 ]);
