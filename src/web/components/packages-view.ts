@@ -22,7 +22,6 @@ import codicon from "@/web/styles/codicon.css";
 import { scrollableBase } from "@/web/styles/base.css";
 import { PackageViewModel, ProjectViewModel } from "../types";
 import { FilterEvent } from "./search-bar";
-import { compareVersions } from "../utilities/version-comparator";
 
 const template = html<PackagesView>`
   <div class="container">
@@ -439,26 +438,9 @@ export class PackagesView extends FASTElement {
   }
 
   get updatesPackages() {
-    return this.projectsPackages.filter((p) => {
-      if (p.Status !== "Detailed" || !p.Version) return false;
-
-      // If InstalledVersion is present, it's a single installed version.
-      // If InstalledVersion is empty, we check InstalledVersions.
-      // InstalledVersions should contain all installed versions.
-      // If InstalledVersions is empty or null, we can't determine updates.
-
-      // Actually, InstalledVersions is initialized from Versions in LoadProjectsPackages,
-      // and Versions (initially) contains installed versions.
-      // So InstalledVersions contains installed versions.
-
-      const installedVersions = p.InstalledVersions;
-      if (!installedVersions || installedVersions.length === 0) return false;
-
-      // Check if any installed version is older than the latest available version (p.Version)
-      return installedVersions.some(
-        (v) => compareVersions(v, p.Version) < 0
-      );
-    });
+    return this.projectsPackages.filter(
+      (p) => p.Status == "Detailed" && p.Version != p.InstalledVersion
+    );
   }
 
   LoadProjectsPackages() {
