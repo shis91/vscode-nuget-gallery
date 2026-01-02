@@ -104,8 +104,10 @@ export class SourceViewModel {
   Id: number = 0;
   @observable Name: string = "";
   @observable Url: string = "";
+  @observable PasswordScriptPath: string = "";
   @observable DraftName: string = "";
   @observable DraftUrl: string = "";
+  @observable DraftPasswordScriptPath: string = "";
   @observable EditMode: boolean = false;
   Editable: boolean = true;
 
@@ -113,11 +115,13 @@ export class SourceViewModel {
     this.Id = nonce();
     this.Name = model?.Name ?? "";
     this.Url = model?.Url ?? "";
+    this.PasswordScriptPath = model?.PasswordScriptPath ?? "";
   }
 
   Edit() {
     this.DraftName = this.Name;
     this.DraftUrl = this.Url;
+    this.DraftPasswordScriptPath = this.PasswordScriptPath;
     this.EditMode = true;
   }
   Cancel() {
@@ -126,6 +130,7 @@ export class SourceViewModel {
   Save() {
     this.Name = this.DraftName;
     this.Url = this.DraftUrl;
+    this.PasswordScriptPath = this.DraftPasswordScriptPath;
     this.EditMode = false;
   }
   GetModel(): Source {
@@ -133,6 +138,9 @@ export class SourceViewModel {
       Name: this.Name,
       Url: this.Url,
     };
+    if (this.PasswordScriptPath) {
+      model.PasswordScriptPath = this.PasswordScriptPath;
+    }
     return model;
   }
 }

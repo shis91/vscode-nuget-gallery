@@ -47,11 +47,11 @@ type Project = {
 type Source = {
   Name: string;
   Url: string;
+  PasswordScriptPath?: string;
 };
 
 type Configuration = {
   SkipRestore: boolean;
-  CredentialProviderFolder: string;
   Sources: Array<Source>;
 };
 

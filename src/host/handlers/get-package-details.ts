@@ -9,7 +9,7 @@ export class GetPackageDetails
     if (!request.SourceUrl) return this.GetError("SourceUrl is empty");
     if (!request.PackageVersionUrl) return this.GetError("PackageVersionUrl is empty");
 
-    let api = nugetApiFactory.GetSourceApi(request.SourceUrl);
+    let api = await nugetApiFactory.GetSourceApi(request.SourceUrl);
     try {
       let packageDetails = await api.GetPackageDetailsAsync(request.PackageVersionUrl);
       let result: GetPackageDetailsResponse = {
@@ -18,10 +18,7 @@ export class GetPackageDetails
       };
       return result;
     } catch (err: any) {
-      console.error(err);
-      vscode.window.showErrorMessage(
-        `Failed to fetch packages: ${err.message}`,
-      );
+      console.error("Failed to fetch package details:", err);
       return this.GetError('Failed to fetch package details');
     }
   }

@@ -74,11 +74,6 @@
           "default": "false",
           "description": "Skip performing a restore preview and compatibility check"
         },
-        "NugetGallery.credentialProviderFolder": {
-          "type": "string",
-          "default": "{user-profile}/.nuget/plugins/netcore/CredentialProvider.Microsoft",
-          "description": "Folder containing CredentialProvider.Microsoft"
-        },
         "NugetGallery.sources": {
           "type": "array",
           "items": {

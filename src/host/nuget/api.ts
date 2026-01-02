@@ -1,10 +1,5 @@
 import axios, { AxiosError, AxiosInstance, AxiosProxyConfig, AxiosRequestConfig, AxiosResponse } from "axios";
-import _ from "lodash";
-const execSync = require("child_process").execSync;
 import * as vscode from "vscode";
-import TaskExecutor from "../utilities/task-executor";
-import os from "os";
-import path from "path";
 
 type GetPackagesResponse = {
   data: Array<Package>;
@@ -23,25 +18,24 @@ type GetPackageDetailsResponse = {
 export default class NuGetApi {
   private _searchUrl: string = "";
   private _packageInfoUrl: string = "";
-  private _token: string | null = null;
   private http: AxiosInstance;
 
-  constructor(private readonly _url: string, private readonly _credentialProviderFolder: string) {
+  constructor(
+    private readonly _url: string,
+    private readonly _username?: string,
+    private readonly _password?: string
+  ) {
     this.http = axios.create({
       proxy: this.getProxy(),
     });
-
-    this.http.interceptors.request.use((x) => {
-      if (this._token != null) x.headers["Authorization"] = `Basic ${this._token}`;
-      return x;
-    });
-
-    this.http.interceptors.response.use(null, async (x) => {
-      if (x.response?.status != 401) return x;
-      let credentials = await this.GetCredentials();
-      this._token = btoa(`${credentials.Username}:${credentials.Password}`);
-      return this.http(x.config);
-    });
+    // Add Basic Auth if credentials are provided
+    if (this._username && this._password) {
+      const token = btoa(`${this._username}:${this._password}`);
+      this.http.interceptors.request.use((config) => {
+        config.headers["Authorization"] = `Basic ${token}`;
+        return config;
+      });
+    }
   }
 
   async GetPackagesAsync(
@@ -51,7 +45,6 @@ export default class NuGetApi {
     take: number
   ): Promise<GetPackagesResponse> {
     await this.EnsureSearchUrl();
-
     let result = await this.ExecuteGet(this._searchUrl, {
       params: {
         q: filter,
@@ -108,18 +101,17 @@ export default class NuGetApi {
         else {
           let pageData = await this.http.get(page["@id"]);
           if (pageData instanceof AxiosError) {
-            console.error("Axios Error while loading page data:");
-            console.error(pageData.message);
+            console.error("Axios Error while loading page data:", pageData.message);
           } else {
             items.push(...pageData.data.items);
           }
         }
       }
     } catch (err) {
-      console.log("ERROR", err);
+      console.log("ERROR url:", url, err);
     }
 
-    if (items.length <= 0) throw { message: "Package info couldn't be found" };
+    if (items.length <= 0) throw { message: "Package info couldn't be found for url:" + url };
     let item = items[items.length - 1];
     let catalogEntry = item.catalogEntry;
     let packageObject: Package = {
@@ -146,40 +138,45 @@ export default class NuGetApi {
   }
 
   async GetPackageDetailsAsync(packageVersionUrl: string): Promise<GetPackageDetailsResponse> {
-    await this.EnsureSearchUrl();
-    let packageVersion = await this.ExecuteGet(packageVersionUrl);
-
-    if (!packageVersion.data?.catalogEntry)
-      return {
-        data: {
-          dependencies: {
-            frameworks: {},
+    try {
+      await this.EnsureSearchUrl();
+      let packageVersion = await this.ExecuteGet(packageVersionUrl);
+      if (!packageVersion.data?.catalogEntry)
+        return {
+          data: {
+            dependencies: {
+              frameworks: {},
+            },
           },
+        };
+      
+      let result = await this.ExecuteGet(packageVersion.data.catalogEntry);
+
+      let packageDetails: PackageDetails = {
+        dependencies: {
+          frameworks: {},
         },
       };
 
-    let result = await this.ExecuteGet(packageVersion.data.catalogEntry);
-
-    let packageDetails: PackageDetails = {
-      dependencies: {
-        frameworks: {},
-      },
-    };
-
-    result.data?.dependencyGroups?.forEach((dependencyGroup: any) => {
-      let targetFramework = dependencyGroup.targetFramework;
-      packageDetails.dependencies.frameworks[targetFramework] = [];
-      dependencyGroup.dependencies?.forEach((dependency: any) => {
-        packageDetails.dependencies.frameworks[targetFramework].push({
-          package: dependency.id,
-          versionRange: dependency.range,
+      result.data?.dependencyGroups?.forEach((dependencyGroup: any) => {
+        let targetFramework = dependencyGroup.targetFramework;
+        packageDetails.dependencies.frameworks[targetFramework] = [];
+        dependencyGroup.dependencies?.forEach((dependency: any) => {
+          packageDetails.dependencies.frameworks[targetFramework].push({
+            package: dependency.id,
+            versionRange: dependency.range,
+          });
         });
+        if (packageDetails.dependencies.frameworks[targetFramework].length == 0)
+          delete packageDetails.dependencies.frameworks[targetFramework];
       });
-      if (packageDetails.dependencies.frameworks[targetFramework].length == 0)
-        delete packageDetails.dependencies.frameworks[targetFramework];
-    });
 
-    return { data: packageDetails };
+      return { data: packageDetails };
+    }
+    catch (err) {
+      console.error("ERROR fetching package details:", packageVersionUrl, err);
+      throw err;
+    }
   }
 
   private async EnsureSearchUrl() {
@@ -189,8 +186,10 @@ export default class NuGetApi {
 
     this._searchUrl = await this.GetUrlFromNugetDefinition(response, "SearchQueryService");
     if (this._searchUrl == "") throw { message: "SearchQueryService couldn't be found" };
-    this._packageInfoUrl = await this.GetUrlFromNugetDefinition(response, "RegistrationsBaseUrl");
+    if (!this._searchUrl.endsWith("/")) this._searchUrl += "/";
+    this._packageInfoUrl = await this.GetUrlFromNugetDefinition(response, "RegistrationsBaseUrl/3.6.0");
     if (this._packageInfoUrl == "") throw { message: "RegistrationsBaseUrl couldn't be found" };
+    if (!this._packageInfoUrl.endsWith("/")) this._packageInfoUrl += "/";
   }
 
   private async GetUrlFromNugetDefinition(response: any, type: string): Promise<string> {
@@ -236,52 +235,6 @@ export default class NuGetApi {
       };
     } else {
       return undefined;
-    }
-  }
-
-  private async GetCredentials(): Promise<Credentials> {
-    let credentialProviderFolder = _.trimEnd(
-      _.trimEnd(this._credentialProviderFolder.replace("{user-profile}", os.homedir()), "/"),
-      "\\"
-    );
-
-    let command = null;
-    if (process.platform === "win32") {
-      command = credentialProviderFolder + "\\CredentialProvider.Microsoft.exe";
-    } else {
-      command = `dotnet "${credentialProviderFolder}/CredentialProvider.Microsoft.dll"`;
-    }
-    try {
-      let result = null;
-      try {
-        result = execSync(command + " -I -N -F Json -U " + this._url, {
-          timeout: 10000,
-        });
-      } catch {
-        let interactiveLoginTask = new vscode.Task(
-          { type: "nuget", task: `CredentialProvider.Microsoft` },
-          vscode.TaskScope.Workspace,
-          "nuget-gallery-credentials",
-          "CredentialProvider.Microsoft",
-          new vscode.ProcessExecution(command, ["-C", "False", "-R", "-U", this._url])
-        );
-
-        await TaskExecutor.ExecuteTask(interactiveLoginTask);
-        result = execSync(command + " -N -F Json -U " + this._url, {
-          timeout: 10000,
-        });
-      }
-      let parsedResult = JSON.parse(result) as {
-        Username: string;
-        Password: string;
-      };
-      return parsedResult;
-    } catch (err) {
-      console.error(err);
-      throw {
-        credentialProviderError: true,
-        message: "Failed to fetch credentials. See 'Webview Developer Tools' for more details",
-      };
     }
   }
 }

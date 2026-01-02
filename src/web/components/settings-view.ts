@@ -26,25 +26,12 @@ const template = html<SettingsView>`
 
     <div class="sections-container">
       <div class="section">
-        <div class="title">Credential Provider Folder</div>
-        <div class="subtitle">Folder containing CredentialProvider.Microsoft</div>
-        <vscode-text-field
-          class="text-field"
-          :value=${(x) => x.credentialProviderFolder}
-          @input=${(x, c) => {
-            (x.credentialProviderFolder = (c.event.target! as HTMLInputElement).value),
-              x.delayedCredentialProviderUpdate();
-          }}
-        ></vscode-text-field>
-      </div>
-
-      <div class="section">
         <div class="title">Skip performing a restore preview and compatibility check</div>
         <vscode-checkbox
           :checked=${(x) => x.skipRestore}
           @change=${(x, c) => {
             x.skipRestore = (c.event.target! as HTMLInputElement).checked;
-            x.delayedCredentialProviderUpdate();
+            x.UpdateConfiguration();
           }}
         >
         </vscode-checkbox>
@@ -72,6 +59,11 @@ const template = html<SettingsView>`
                       :value=${(x) => x.DraftUrl}
                       @input=${(x, c) => (x.DraftUrl = (c.event.target! as HTMLInputElement).value)}
                     ></vscode-text-field>
+                    <vscode-text-field
+                      placeholder="Password Script Path (optional)"
+                      :value=${(x) => x.DraftPasswordScriptPath}
+                      @input=${(x, c) => (x.DraftPasswordScriptPath = (c.event.target! as HTMLInputElement).value)}
+                    ></vscode-text-field>
                     <div>
                       <vscode-button
                         @click=${(x, c: ExecutionContext<SettingsView, any>) => c.parent.SaveRow(x)}
@@ -92,6 +84,7 @@ const template = html<SettingsView>`
                   <div class="row data-row">
                     <span class="label">${(x) => x.Name}</span>
                     <span class="label">${(x) => x.Url}</span>
+                    <span class="label">${(x) => x.PasswordScriptPath}</span>
                     <div class="actions">
                       <vscode-button
                         appearance="icon"
@@ -168,7 +161,7 @@ const styles = css`
           .row {
             margin: 4px 0px;
             display: grid;
-            grid-template-columns: 30% 70%;
+            grid-template-columns: 20% 35% 45%;
             grid-column-gap: 10px;
             &.data-row {
               .actions {
@@ -178,10 +171,10 @@ const styles = css`
                 padding: 4px 2px;
                 text-wrap: nowrap;
                 overflow: hidden;
-                text-overflow: ellipsis; gall
+                text-overflow: ellipsis;
               }
               &:hover {
-                grid-template-columns: 30% auto 50px;
+                grid-template-columns: 20% 25% 30% 50px;
                 background-color: var(--vscode-list-hoverBackground);
                 &:not(:first-child) {
                   .actions {
@@ -192,7 +185,7 @@ const styles = css`
               }
             }
             &.edit-row {
-              grid-template-columns: 30% auto 108px;
+              grid-template-columns: 20% 25% 30% 108px;
             }
           }
         }
@@ -213,8 +206,6 @@ export class SettingsView extends FASTElement {
   @Router router!: Router;
   @Configuration configuration!: Configuration;
   @IMediator mediator!: IMediator;
-  delayedCredentialProviderUpdate = lodash.debounce(() => this.UpdateConfiguration(), 500);
-  @observable credentialProviderFolder: string = "";
   @observable skipRestore: boolean = false;
   @observable newSource: SourceViewModel | null = null;
   @observable sources: Array<SourceViewModel> = [];
@@ -222,7 +213,6 @@ export class SettingsView extends FASTElement {
   connectedCallback(): void {
     super.connectedCallback();
     let config = this.configuration.Configuration;
-    this.credentialProviderFolder = config?.CredentialProviderFolder ?? "";
     this.skipRestore = config?.SkipRestore ?? false;
     this.sources = config?.Sources.map((x) => new SourceViewModel(x)) ?? [];
   }
@@ -233,7 +223,6 @@ export class SettingsView extends FASTElement {
       {
         Configuration: {
           SkipRestore: this.skipRestore,
-          CredentialProviderFolder: this.credentialProviderFolder,
           Sources: this.sources.map((x) => x.GetModel()),
         },
       }

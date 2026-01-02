@@ -1,6 +1,8 @@
 type GetPackageDetailsRequest = {
   PackageVersionUrl: string;
   SourceUrl: string;
+  SourceName?: string;
+  PasswordScriptPath?: string;
 };
 
 type GetPackageDetailsResponse = {

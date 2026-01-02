@@ -133,6 +133,7 @@ const template = html<PackagesView>`
                   :package=${(x) => x.selectedPackage}
                   :packageVersionUrl=${(x) => x.PackageVersionUrl}
                   :source=${(x) => x.filters.SourceUrl}
+                  :passwordScriptPath=${(x) => x.CurrentSource?.PasswordScriptPath}
                 ></package-details>
                 <div class="separator"></div>
                 ${when(
@@ -391,6 +392,11 @@ export class PackagesView extends FASTElement {
   }
 
   @volatile
+  get CurrentSource() {
+    return this.configuration.Configuration?.Sources.find(s => s.Url === this.filters.SourceUrl);
+  }
+
+  @volatile
   get NugetOrgPackageUrl() {
     if (this.filters.SourceUrl.startsWith(NUGET_ORG_PREFIX))
       return `https://www.nuget.org/packages/${this.selectedPackage?.Name}/${this.selectedVersion}`;
@@ -487,6 +493,9 @@ export class PackagesView extends FASTElement {
     >(GET_PACKAGE, {
       Id: projectPackage.Id,
       Url: this.filters.SourceUrl,
+      SourceName: this.CurrentSource?.Name,
+      Prerelease: this.filters.Prerelease,
+      PasswordScriptPath: this.CurrentSource?.PasswordScriptPath,
     });
 
     if (result.IsFailure || !result.Package) {
@@ -521,6 +530,9 @@ export class PackagesView extends FASTElement {
       >(GET_PACKAGE, {
         Id: packageToUpdate.Id,
         Url: this.filters.SourceUrl,
+        SourceName: this.CurrentSource?.Name,
+        Prerelease: this.filters.Prerelease,
+        PasswordScriptPath: this.CurrentSource?.PasswordScriptPath,
       });
 
       if (result.IsFailure || !result.Package) {
@@ -552,10 +564,12 @@ export class PackagesView extends FASTElement {
     let _getLoadPackageRequest = () => {
       return {
         Url: this.filters.SourceUrl,
+        SourceName: this.CurrentSource?.Name,
         Filter: this.filters.Query,
         Prerelease: this.filters.Prerelease,
         Skip: this.packagesPage * PACKAGE_FETCH_TAKE,
         Take: PACKAGE_FETCH_TAKE,
+        PasswordScriptPath: this.CurrentSource?.PasswordScriptPath,
       };
     };
 

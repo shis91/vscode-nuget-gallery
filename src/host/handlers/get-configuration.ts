@@ -1,33 +1,50 @@
 import { IRequestHandler } from "@/common/messaging/core/types";
 import * as vscode from "vscode";
+import NuGetConfigResolver from "../utilities/nuget-config-resolver";
+
 export default class GetConfiguration implements IRequestHandler<GetConfigurationRequest, GetConfigurationResponse> {
   async HandleAsync(request: GetConfigurationRequest): Promise<GetConfigurationResponse> {
     let config = vscode.workspace.getConfiguration("NugetGallery");
     try {
-      await config.update("credentialProviderFolder", undefined, vscode.ConfigurationTarget.Workspace);
       await config.update("sources", undefined, vscode.ConfigurationTarget.Workspace);
       await config.update("skipRestore", undefined, vscode.ConfigurationTarget.Workspace);
     } catch {}
     config = vscode.workspace.getConfiguration("NugetGallery");
-    let sources =
-      config.get<Array<string>>("sources")?.map((x) => {
-        try {
-          return JSON.parse(x) as { name?: string; url?: string };
-        } catch {
-          return {};
+
+    // Get sources from NuGet.config and VSCode settings, decode passwords
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspaceRoot = workspaceFolders?.[0]?.uri.fsPath;
+    const sourcesWithCreds = await NuGetConfigResolver.GetSourcesAndDecodePasswords(workspaceRoot);
+
+    // Strip credentials before sending to webview (security)
+    const sources: Source[] = sourcesWithCreds.map(s => ({
+      Name: s.Name,
+      Url: s.Url,
+    }));
+
+    // Add passwordScriptPath from VSCode settings
+    const vscodeSourcesRaw = config.get<Array<string>>("sources") ?? [];
+    vscodeSourcesRaw.forEach((x) => {
+      try {
+        const parsed = JSON.parse(x) as { 
+          name?: string;
+          passwordScriptPath?: string;
+        };
+        if (parsed.name && parsed.passwordScriptPath) {
+          const source = sources.find(s => s.Name === parsed.name);
+          if (source) {
+            source.PasswordScriptPath = parsed.passwordScriptPath;
+          }
         }
-      }) ?? [];
+      } catch {
+        // Skip invalid JSON
+      }
+    });
 
     let result: GetConfigurationResponse = {
       Configuration: {
         SkipRestore: config.get("skipRestore") ?? false,
-        CredentialProviderFolder: config.get("credentialProviderFolder") ?? "",
-        Sources: sources
-          .filter((x) => x.name != undefined && x.url != undefined)
-          .map((x) => ({
-            Name: x.name!,
-            Url: x.url!,
-          })),
+        Sources: sources,
       },
     };
 

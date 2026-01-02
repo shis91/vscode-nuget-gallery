@@ -1,6 +1,9 @@
 type GetPackageRequest = {
   Url: string;
+  SourceName?: string;
   Id: string;
+  Prerelease: boolean;
+  PasswordScriptPath?: string;
 };
 
 type GetPackageResponse = {

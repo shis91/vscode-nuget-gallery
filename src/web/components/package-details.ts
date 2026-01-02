@@ -124,6 +124,7 @@ export class PackageDetailsComponent extends FASTElement {
   @attr package: PackageViewModel | null = null;
   @attr packageVersionUrl: string = "";
   @attr source: string = "";
+  @attr passwordScriptPath?: string;
 
   @observable packageDetailsLoading: boolean = false;
   @observable packageDetails?: PackageDetails;
@@ -137,7 +138,6 @@ export class PackageDetailsComponent extends FASTElement {
   }
 
   private async ReloadDependencies() {
-    console.log('test reload');
     this.packageDetails = undefined;
 
     if (!this.source) return;
@@ -147,6 +147,7 @@ export class PackageDetailsComponent extends FASTElement {
     let request: GetPackageDetailsRequest = {
       PackageVersionUrl: this.packageVersionUrl,
       SourceUrl: this.source,
+      PasswordScriptPath: this.passwordScriptPath,
     };
 
     let result = await this.mediator.PublishAsync<
