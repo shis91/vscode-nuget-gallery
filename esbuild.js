@@ -7,6 +7,7 @@ const baseConfig = {
   define: {
     "process.env.NEW_RELIC_API_KEY": JSON.stringify(process.env.NEW_RELIC_API_KEY ?? ""),
     "process.env.ENVIRONMENT": JSON.stringify(process.env.ENVIRONMENT ?? "debugging"),
+    "process.env.TELEMETRY_ADDRESS": JSON.stringify(process.env.TELEMETRY_ADDRESS ?? ""),
   },
   loader: {
     ".png": "dataurl",
