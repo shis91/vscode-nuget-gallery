@@ -34,6 +34,7 @@ const template = html<PackagesView>`
       <vscode-panels class="tabs" aria-label="Default">
         <vscode-panel-tab class="tab" id="tab-1">BROWSE</vscode-panel-tab>
         <vscode-panel-tab class="tab" id="tab-2">INSTALLED</vscode-panel-tab>
+        <vscode-panel-tab class="tab" id="tab-3">UPDATES</vscode-panel-tab>
         <vscode-panel-view class="views" id="view-1">
           <div
             class="packages-container"
@@ -72,6 +73,22 @@ const template = html<PackagesView>`
           <div class="packages-container">
             ${repeat(
               (x) => x.projectsPackages,
+              html<PackageViewModel>`
+                <package-row
+                  :showInstalledVersion="${(x) => true}"
+                  :package=${(x) => x}
+                  @click=${(x, c: ExecutionContext<PackagesView, any>) =>
+                    c.parent.SelectPackage(x)}
+                >
+                </package-row>
+              `
+            )}
+          </div>
+        </vscode-panel-view>
+        <vscode-panel-view class="views updates-packages" id="view-3">
+          <div class="packages-container">
+            ${repeat(
+              (x) => x.updatesPackages,
               html<PackageViewModel>`
                 <package-row
                   :showInstalledVersion="${(x) => true}"
@@ -417,6 +434,12 @@ export class PackagesView extends FASTElement {
       this.selectedPackage?.Model.Versions.filter(
         (x) => x.Version == this.selectedVersion
       )[0].Id ?? ""
+    );
+  }
+
+  get updatesPackages() {
+    return this.projectsPackages.filter(
+      (p) => p.Status == "Detailed" && p.Version != p.InstalledVersion
     );
   }
 
