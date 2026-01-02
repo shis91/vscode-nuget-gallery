@@ -22,6 +22,7 @@ import codicon from "@/web/styles/codicon.css";
 import { scrollableBase } from "@/web/styles/base.css";
 import { PackageViewModel, ProjectViewModel } from "../types";
 import { FilterEvent } from "./search-bar";
+import { compareVersions } from "../utilities/version-comparator";
 
 const template = html<PackagesView>`
   <div class="container">
@@ -34,6 +35,7 @@ const template = html<PackagesView>`
       <vscode-panels class="tabs" aria-label="Default">
         <vscode-panel-tab class="tab" id="tab-1">BROWSE</vscode-panel-tab>
         <vscode-panel-tab class="tab" id="tab-2">INSTALLED</vscode-panel-tab>
+        <vscode-panel-tab class="tab" id="tab-3">UPDATES</vscode-panel-tab>
         <vscode-panel-view class="views" id="view-1">
           <div
             class="packages-container"
@@ -72,6 +74,22 @@ const template = html<PackagesView>`
           <div class="packages-container">
             ${repeat(
               (x) => x.projectsPackages,
+              html<PackageViewModel>`
+                <package-row
+                  :showInstalledVersion="${(x) => true}"
+                  :package=${(x) => x}
+                  @click=${(x, c: ExecutionContext<PackagesView, any>) =>
+                    c.parent.SelectPackage(x)}
+                >
+                </package-row>
+              `
+            )}
+          </div>
+        </vscode-panel-view>
+        <vscode-panel-view class="views updates-packages" id="view-3">
+          <div class="packages-container">
+            ${repeat(
+              (x) => x.updatesPackages,
               html<PackageViewModel>`
                 <package-row
                   :showInstalledVersion="${(x) => true}"
@@ -418,6 +436,29 @@ export class PackagesView extends FASTElement {
         (x) => x.Version == this.selectedVersion
       )[0].Id ?? ""
     );
+  }
+
+  get updatesPackages() {
+    return this.projectsPackages.filter((p) => {
+      if (p.Status !== "Detailed" || !p.Version) return false;
+
+      // If InstalledVersion is present, it's a single installed version.
+      // If InstalledVersion is empty, we check InstalledVersions.
+      // InstalledVersions should contain all installed versions.
+      // If InstalledVersions is empty or null, we can't determine updates.
+
+      // Actually, InstalledVersions is initialized from Versions in LoadProjectsPackages,
+      // and Versions (initially) contains installed versions.
+      // So InstalledVersions contains installed versions.
+
+      const installedVersions = p.InstalledVersions;
+      if (!installedVersions || installedVersions.length === 0) return false;
+
+      // Check if any installed version is older than the latest available version (p.Version)
+      return installedVersions.some(
+        (v) => compareVersions(v, p.Version) < 0
+      );
+    });
   }
 
   LoadProjectsPackages() {

@@ -16,6 +16,7 @@ export class PackageViewModel {
   @observable TotalDownloads: number;
   @observable Verified: boolean;
   @observable InstalledVersion: string;
+  @observable InstalledVersions: Array<string>;
   @observable Version: string;
   @observable Versions: Array<string>;
   @observable Status: PackageViewModelStatus;
@@ -34,6 +35,7 @@ export class PackageViewModel {
     this.Version = model.Version;
     this.InstalledVersion = model.InstalledVersion;
     this.Versions = model.Versions?.map((x) => x.Version).reverse() ?? [];
+    this.InstalledVersions = this.Versions;
     this._tags = model.Tags;
     this.Model = model;
     this.Status = status;
