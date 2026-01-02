@@ -20,7 +20,6 @@ import { GetPackages } from "./handlers/get-packages";
 import UpdateProject from "./handlers/update-project";
 import GetConfiguration from "./handlers/get-configuration";
 import UpdateConfiguration from "./handlers/update-configuration";
-import Telemetry from "./utilities/telemetry";
 import OpenUrl from "./handlers/open-url";
 import { GetPackageDetails } from "./handlers/get-package-details";
 import { GetPackage } from "./handlers/get-package";
@@ -32,17 +31,15 @@ export function activate(context: vscode.ExtensionContext) {
   Logger.configure(context);
   Logger.info("Extension activated");
   const provider = new NugetViewProvider(context.extensionUri);
-  const telemetry = new Telemetry(context);
-  telemetry.sendEvent("activated");
+  Logger.sendEvent("activated");
 
   let previousVersion: string | undefined = context.globalState.get("NugetGallery.version");
   context.globalState.update("NugetGallery.version", context.extension.packageJSON.version);
   if (previousVersion == undefined) {
-    telemetry.sendEvent("installed");
+    Logger.sendEvent("installed");
   } else if (previousVersion != context.extension.packageJSON.version)
-    telemetry.sendEvent("upgraded", { fromVersion: previousVersion });
+    Logger.sendEvent("upgraded", { fromVersion: previousVersion });
 
-  context.subscriptions.push(telemetry);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("nuget.gallery.view", provider, {
       webviewOptions: {
