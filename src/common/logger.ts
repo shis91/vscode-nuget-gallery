@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as util from 'util';
 
 export class Logger {
     private static _outputChannel: vscode.OutputChannel;
@@ -8,22 +9,23 @@ export class Logger {
         context.subscriptions.push(this._outputChannel);
     }
 
-    public static log(message: string, level: string = 'INFO'): void {
+    public static log(level: string, message: string, ...args: any[]): void {
         if (this._outputChannel) {
             const timestamp = new Date().toISOString();
-            this._outputChannel.appendLine(`[${timestamp}] [${level}] ${message}`);
+            const formattedMessage = util.format(message, ...args);
+            this._outputChannel.appendLine(`[${timestamp}] [${level}] ${formattedMessage}`);
         }
     }
 
-    public static info(message: string): void {
-        this.log(message, 'INFO');
+    public static info(message: string, ...args: any[]): void {
+        this.log('INFO', message, ...args);
     }
 
-    public static warn(message: string): void {
-        this.log(message, 'WARN');
+    public static warn(message: string, ...args: any[]): void {
+        this.log('WARN', message, ...args);
     }
 
-    public static error(message: string): void {
-        this.log(message, 'ERROR');
+    public static error(message: string, ...args: any[]): void {
+        this.log('ERROR', message, ...args);
     }
 }
