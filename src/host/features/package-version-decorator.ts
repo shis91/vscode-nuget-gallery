@@ -8,6 +8,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
     private _decorationType: vscode.TextEditorDecorationType;
     private _cache: Map<string, string> = new Map(); // PackageId -> LatestVersion
     private _failedCache: Set<string> = new Set(); // PackageIds that failed to fetch
+    private _isEnabled: boolean = false;
 
     constructor() {
         this._decorationType = vscode.window.createTextEditorDecorationType({
@@ -16,6 +17,18 @@ export class PackageVersionDecorator implements vscode.Disposable {
                 color: new vscode.ThemeColor('editorCodeLens.foreground'),
             }
         });
+
+        this.updateConfiguration();
+
+        // Listen for configuration changes
+        this._disposables.push(vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('NugetGallery.enablePackageVersionInlineInfo')) {
+                this.updateConfiguration();
+                if (vscode.window.activeTextEditor) {
+                    this.triggerUpdateDecorations(vscode.window.activeTextEditor);
+                }
+            }
+        }));
 
         // Listen for active editor changes
         this._disposables.push(vscode.window.onDidChangeActiveTextEditor(editor => {
@@ -36,6 +49,10 @@ export class PackageVersionDecorator implements vscode.Disposable {
         }
     }
 
+    private updateConfiguration() {
+        this._isEnabled = vscode.workspace.getConfiguration('NugetGallery').get<boolean>('enablePackageVersionInlineInfo', false);
+    }
+
     private _timeout: NodeJS.Timeout | undefined = undefined;
 
     private triggerUpdateDecorations(editor: vscode.TextEditor) {
@@ -50,6 +67,11 @@ export class PackageVersionDecorator implements vscode.Disposable {
 
     private async updateDecorations(editor: vscode.TextEditor) {
         if (!editor || editor.document.isClosed) {
+            return;
+        }
+
+        if (!this._isEnabled) {
+            editor.setDecorations(this._decorationType, []);
             return;
         }
 
@@ -160,16 +182,6 @@ export class PackageVersionDecorator implements vscode.Disposable {
                              // If Versions array is available, use it to find latest stable if possible, or just latest.
                              // The user probably wants latest stable unless they are on prerelease.
                              // For simplicity, let's take the Version property which usually points to latest.
-
-                             // If result.data.Versions is present, we can look at it.
-                             if (result.data.Versions && result.data.Versions.length > 0) {
-                                 const versions = result.data.Versions.map(v => v.Version);
-                                 // Simple logic: last one.
-                                 // Better logic would be semver sort, but let's trust the API order or use the top level Version property.
-                                 // The NuGetApi.GetPackageAsync implementation sets Version from catalogEntry.version
-                                 // "let item = items[items.length - 1]; let catalogEntry = item.catalogEntry; ... Version: catalogEntry?.version"
-                                 // It seems it fetches all pages and takes the last item.
-                             }
 
                              this._cache.set(packageId, latest);
                              found = true;
