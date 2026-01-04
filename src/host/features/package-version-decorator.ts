@@ -6,7 +6,6 @@ import { Logger } from '../../common/logger';
 export class PackageVersionDecorator implements vscode.Disposable {
     private _disposables: vscode.Disposable[] = [];
     private _decorationType: vscode.TextEditorDecorationType;
-    private _cache: Map<string, string> = new Map(); // PackageId -> LatestVersion
     private _failedCache: Set<string> = new Set(); // PackageIds that failed to fetch
     private _isEnabled: boolean = false;
 
@@ -92,8 +91,10 @@ export class PackageVersionDecorator implements vscode.Disposable {
 
         const text = doc.getText();
         const regex = /<(PackageReference|PackageVersion)\s+[^>]*>/g;
-        const decorations: vscode.DecorationOptions[] = [];
-        const packagesToFetch: string[] = [];
+        const packagesToFetch: Set<string> = new Set();
+
+        // Map current document positions for packages
+        const packagePositions: Map<string, { start: vscode.Position, end: vscode.Position, version: string }[]> = new Map();
 
         let match;
         while ((match = regex.exec(text))) {
@@ -106,10 +107,6 @@ export class PackageVersionDecorator implements vscode.Disposable {
                 const currentVersion = versionMatch[1];
 
                 // Find position of Version value
-                // We need to find the specific "Version" attribute associated with this tag
-                // simple search might be risky if "Version" appears in other attributes, but standard is Version=".."
-
-                // Find Version=" inside the tag
                 const versionAttrIndex = tag.indexOf(versionMatch[0]);
                 if (versionAttrIndex === -1) continue;
 
@@ -120,80 +117,53 @@ export class PackageVersionDecorator implements vscode.Disposable {
                 const startPos = doc.positionAt(absoluteIndex);
                 const endPos = doc.positionAt(absoluteIndex + currentVersion.length);
 
-                const latestVersion = this._cache.get(packageId);
+                if (!packagePositions.has(packageId)) {
+                    packagePositions.set(packageId, []);
+                }
+                packagePositions.get(packageId)!.push({ start: startPos, end: endPos, version: currentVersion });
 
-                if (latestVersion) {
-                    if (latestVersion !== currentVersion) {
-                         // Check if latest is actually newer
-                         // Simple string compare is not enough for SemVer but usually sufficient for quick check.
-                         // ideally we use semver compare. But for now let's show if different.
-                         // The user asked "show inline information that the package has avliable newer version"
-                         // So I should probably check if it is newer.
-                         // But for now, let's just show latest if different.
-                        decorations.push({
-                            range: new vscode.Range(startPos, endPos),
-                            renderOptions: {
-                                after: {
-                                    contentText: ` (Latest: ${latestVersion})`,
-                                }
-                            }
-                        });
-                    }
-                } else if (!this._failedCache.has(packageId)) {
-                    if (!packagesToFetch.includes(packageId)) {
-                        packagesToFetch.push(packageId);
-                    }
+                if (!this._failedCache.has(packageId)) {
+                    packagesToFetch.add(packageId);
                 }
             }
         }
 
-        Logger.debug(`PackageVersionDecorator: Found ${decorations.length} decorations to apply. Fetching ${packagesToFetch.length} new packages.`);
-
-        editor.setDecorations(this._decorationType, decorations);
-
-        if (packagesToFetch.length > 0) {
-            this.fetchVersions(packagesToFetch, editor);
+        // Fetch and decorate
+        if (packagesToFetch.size > 0) {
+            this.fetchAndDecorate(packagesToFetch, packagePositions, editor);
         }
     }
 
-    private async fetchVersions(packageIds: string[], editor: vscode.TextEditor) {
-        Logger.debug(`PackageVersionDecorator: Fetching versions for ${packageIds.join(', ')}`);
+    private async fetchAndDecorate(
+        packageIds: Set<string>,
+        packagePositions: Map<string, { start: vscode.Position, end: vscode.Position, version: string }[]>,
+        editor: vscode.TextEditor
+    ) {
+        Logger.debug(`PackageVersionDecorator: Fetching versions for ${Array.from(packageIds).join(', ')}`);
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         const sources = await NuGetConfigResolver.GetSourcesAndDecodePasswords(workspaceRoot);
+        const decorations: vscode.DecorationOptions[] = [];
 
         if (sources.length === 0) {
             Logger.warn('PackageVersionDecorator: No NuGet sources configured.');
             return;
         }
 
-        // We'll process packages in batches to avoid overwhelming, but here we just iterate
-        for (const packageId of packageIds) {
-             // Avoid refetching if already cached (check again as async)
-             if (this._cache.has(packageId) || this._failedCache.has(packageId)) continue;
+        const promises = Array.from(packageIds).map(async (packageId) => {
+             if (this._failedCache.has(packageId)) return;
 
              try {
                  // Try sources in order until found
                  let found = false;
+                 let latestVersion: string | undefined;
+
                  for (const source of sources) {
                      try {
                          const api = await nugetApiFactory.GetSourceApi(source.Url);
                          const result = await api.GetPackageAsync(packageId);
 
                          if (!result.isError && result.data) {
-                             // Get the absolute latest version from all versions
-                             // The GetPackageAsync returns `data.Versions` which is all versions.
-                             // We should pick the last one or sort?
-                             // result.data.Versions seems to be sorted usually?
-                             // result.data.Version is the latest version from catalog entry?
-
-                             let latest = result.data.Version;
-
-                             // If Versions array is available, use it to find latest stable if possible, or just latest.
-                             // The user probably wants latest stable unless they are on prerelease.
-                             // For simplicity, let's take the Version property which usually points to latest.
-
-                             Logger.debug(`PackageVersionDecorator: Fetched ${packageId} -> ${latest} from ${source.Url}`);
-                             this._cache.set(packageId, latest);
+                             latestVersion = result.data.Version;
                              found = true;
                              break;
                          }
@@ -202,20 +172,36 @@ export class PackageVersionDecorator implements vscode.Disposable {
                      }
                  }
 
-                 if (!found) {
-                     Logger.warn(`PackageVersionDecorator: Could not find package ${packageId} in any source.`);
+                 if (found && latestVersion) {
+                    const positions = packagePositions.get(packageId);
+                    if (positions) {
+                        for (const pos of positions) {
+                            if (pos.version !== latestVersion) {
+                                decorations.push({
+                                    range: new vscode.Range(pos.start, pos.end),
+                                    renderOptions: {
+                                        after: {
+                                            contentText: ` (Latest: ${latestVersion})`,
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                 } else {
                      this._failedCache.add(packageId);
                  }
-
              } catch (error) {
                  Logger.error(`PackageVersionDecorator: Failed to fetch version for ${packageId}`, error);
                  this._failedCache.add(packageId);
              }
-        }
+        });
 
-        // Re-run update decorations
-        if (vscode.window.activeTextEditor === editor) {
-            this.triggerUpdateDecorations(editor);
+        await Promise.all(promises);
+
+        // Ensure editor is still active and valid
+        if (editor && !editor.document.isClosed) {
+             editor.setDecorations(this._decorationType, decorations);
         }
     }
 
