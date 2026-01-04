@@ -11,6 +11,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
     private _isEnabled: boolean = false;
 
     constructor() {
+        Logger.debug('PackageVersionDecorator: Initialized');
         this._decorationType = vscode.window.createTextEditorDecorationType({
             after: {
                 margin: '0 0 0 1em',
@@ -33,6 +34,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
         // Listen for active editor changes
         this._disposables.push(vscode.window.onDidChangeActiveTextEditor(editor => {
             if (editor) {
+                Logger.debug(`PackageVersionDecorator: Active editor changed to ${editor.document.fileName}`);
                 this.triggerUpdateDecorations(editor);
             }
         }));
@@ -51,6 +53,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
 
     private updateConfiguration() {
         this._isEnabled = vscode.workspace.getConfiguration('NugetGallery').get<boolean>('enablePackageVersionInlineInfo', false);
+        Logger.debug(`PackageVersionDecorator: Configuration updated, enabled=${this._isEnabled}`);
     }
 
     private _timeout: NodeJS.Timeout | undefined = undefined;
@@ -84,6 +87,8 @@ export class PackageVersionDecorator implements vscode.Disposable {
             !fileName.endsWith('.vbproj')) {
             return;
         }
+
+        Logger.debug(`PackageVersionDecorator: Processing ${fileName}`);
 
         const text = doc.getText();
         const regex = /<(PackageReference|PackageVersion)\s+[^>]*>/g;
@@ -142,6 +147,8 @@ export class PackageVersionDecorator implements vscode.Disposable {
             }
         }
 
+        Logger.debug(`PackageVersionDecorator: Found ${decorations.length} decorations to apply. Fetching ${packagesToFetch.length} new packages.`);
+
         editor.setDecorations(this._decorationType, decorations);
 
         if (packagesToFetch.length > 0) {
@@ -150,10 +157,12 @@ export class PackageVersionDecorator implements vscode.Disposable {
     }
 
     private async fetchVersions(packageIds: string[], editor: vscode.TextEditor) {
+        Logger.debug(`PackageVersionDecorator: Fetching versions for ${packageIds.join(', ')}`);
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         const sources = await NuGetConfigResolver.GetSourcesAndDecodePasswords(workspaceRoot);
 
         if (sources.length === 0) {
+            Logger.warn('PackageVersionDecorator: No NuGet sources configured.');
             return;
         }
 
@@ -183,6 +192,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
                              // The user probably wants latest stable unless they are on prerelease.
                              // For simplicity, let's take the Version property which usually points to latest.
 
+                             Logger.debug(`PackageVersionDecorator: Fetched ${packageId} -> ${latest} from ${source.Url}`);
                              this._cache.set(packageId, latest);
                              found = true;
                              break;
@@ -193,6 +203,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
                  }
 
                  if (!found) {
+                     Logger.warn(`PackageVersionDecorator: Could not find package ${packageId} in any source.`);
                      this._failedCache.add(packageId);
                  }
 
