@@ -9,7 +9,9 @@ export default class ProjectParser {
     Logger.debug(`ProjectParser.Parse: Parsing project: ${projectPath}`);
     let projectContent = fs.readFileSync(projectPath, "utf8");
     let document = new DOMParser().parseFromString(projectContent);
-    if (document == undefined) {
+
+    // Check for parsing errors or empty document
+    if (!document || !document.documentElement) {
       Logger.error(`ProjectParser.Parse: ${projectPath} has invalid content`);
       throw `${projectPath} has invalid content`;
     }
@@ -22,7 +24,8 @@ export default class ProjectParser {
     };
 
     (packagesReferences || []).forEach((p: any) => {
-      let version = p.attributes?.getNamedItem("Version");
+      let versionNode = p.attributes?.getNamedItem("Version");
+      let version = versionNode ? versionNode.value : undefined;
       const packageId = p.attributes?.getNamedItem("Include").value;
       
       if (cpmVersions) {
@@ -36,7 +39,7 @@ export default class ProjectParser {
 
       let projectPackage: ProjectPackage = {
         Id: packageId,
-        Version: version,
+        Version: version || "", // Ensure string
       };
       project.Packages.push(projectPackage);
     });
