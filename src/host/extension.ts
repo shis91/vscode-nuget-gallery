@@ -24,7 +24,7 @@ import OpenUrl from "./handlers/open-url";
 import { GetPackageDetails } from "./handlers/get-package-details";
 import { GetPackage } from "./handlers/get-package";
 import { Logger } from "../common/logger";
-import { PackageVersionDecorator } from "./features/package-version-decorator";
+import { PackageVersionDecorator } from "./utilities/package-version-decorator";
 
 let mediator: IMediator;
 

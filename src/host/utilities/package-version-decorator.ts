@@ -10,7 +10,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
     private _isEnabled: boolean = false;
 
     constructor() {
-        Logger.debug('PackageVersionDecorator: Initialized');
+        Logger.debug('PackageVersionDecorator.constructor: Initialized');
         this._decorationType = vscode.window.createTextEditorDecorationType({
             after: {
                 margin: '0 0 0 1em',
@@ -33,7 +33,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
         // Listen for active editor changes
         this._disposables.push(vscode.window.onDidChangeActiveTextEditor(editor => {
             if (editor) {
-                Logger.debug(`PackageVersionDecorator: Active editor changed to ${editor.document.fileName}`);
+                Logger.debug(`PackageVersionDecorator.constructor: Active editor changed to ${editor.document.fileName}`);
                 this.triggerUpdateDecorations(editor);
             }
         }));
@@ -52,7 +52,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
 
     private updateConfiguration() {
         this._isEnabled = vscode.workspace.getConfiguration('NugetGallery').get<boolean>('enablePackageVersionInlineInfo', false);
-        Logger.debug(`PackageVersionDecorator: Configuration updated, enabled=${this._isEnabled}`);
+        Logger.debug(`PackageVersionDecorator.updateConfiguration: Configuration updated, enabled=${this._isEnabled}`);
     }
 
     private _timeout: NodeJS.Timeout | undefined = undefined;
@@ -87,7 +87,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
             return;
         }
 
-        Logger.debug(`PackageVersionDecorator: Processing ${fileName}`);
+        Logger.debug(`PackageVersionDecorator.updateDecorations: Processing ${fileName}`);
 
         const text = doc.getText();
         const regex = /<(PackageReference|PackageVersion)\s+[^>]*>/g;
@@ -139,13 +139,13 @@ export class PackageVersionDecorator implements vscode.Disposable {
         packagePositions: Map<string, { start: vscode.Position, end: vscode.Position, version: string }[]>,
         editor: vscode.TextEditor
     ) {
-        Logger.debug(`PackageVersionDecorator: Fetching versions for ${Array.from(packageIds).join(', ')}`);
+        Logger.debug(`PackageVersionDecorator.fetchAndDecorate: Fetching versions for ${Array.from(packageIds).join(', ')}`);
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         const sources = await NuGetConfigResolver.GetSourcesAndDecodePasswords(workspaceRoot);
         const decorations: vscode.DecorationOptions[] = [];
 
         if (sources.length === 0) {
-            Logger.warn('PackageVersionDecorator: No NuGet sources configured.');
+            Logger.warn('PackageVersionDecorator.fetchAndDecorate: No NuGet sources configured.');
             return;
         }
 
@@ -192,7 +192,7 @@ export class PackageVersionDecorator implements vscode.Disposable {
                      this._failedCache.add(packageId);
                  }
              } catch (error) {
-                 Logger.error(`PackageVersionDecorator: Failed to fetch version for ${packageId}`, error);
+                 Logger.error(`PackageVersionDecorator.fetchAndDecorate: Failed to fetch version for ${packageId}`, error);
                  this._failedCache.add(packageId);
              }
         });
