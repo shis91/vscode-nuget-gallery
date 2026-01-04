@@ -1,9 +1,9 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
-import * as child_process from 'child_process';
 import { EventEmitter } from 'events';
 import PasswordScriptExecutor from '../../../../host/utilities/password-script-executor';
+const child_process = require('child_process');
 
 suite('PasswordScriptExecutor Tests', () => {
     let createTerminalStub: sinon.SinonStub;
@@ -14,17 +14,22 @@ suite('PasswordScriptExecutor Tests', () => {
 
     setup(() => {
         createTerminalStub = sinon.stub(vscode.window, 'createTerminal');
-        spawnStub = sinon.stub(child_process, 'spawn');
+
+        // Mock child_process.spawn
+        processMock = new EventEmitter();
+        (processMock as any).stdout = new EventEmitter();
+        (processMock as any).stderr = new EventEmitter();
+        (processMock as any).kill = () => {};
+
+        // child_process.spawn might be read-only if imported as * or via import { spawn }
+        // but here we required it, so it should be mutable or stubbable.
+        spawnStub = sinon.stub(child_process, 'spawn').returns(processMock);
+
         PasswordScriptExecutor.ClearCache();
 
         terminalMock = {
             dispose: sinon.spy()
         };
-
-        processMock = new EventEmitter();
-        (processMock as any).stdout = new EventEmitter();
-        (processMock as any).stderr = new EventEmitter();
-        spawnStub.returns(processMock);
     });
 
     teardown(() => {
@@ -50,8 +55,6 @@ suite('PasswordScriptExecutor Tests', () => {
             // Simulate pty opening and process output
             setTimeout(() => {
                 ptyMock.open();
-                // We need to capture the process listeners attached in pty.open()
-                // But pty.open uses spawn, which we stubbed.
 
                 // Emitting data from process stdout
                 processMock.stdout.emit('data', Buffer.from(decodedPassword));
@@ -181,9 +184,5 @@ suite('PasswordScriptExecutor Tests', () => {
         // Should call again
         await PasswordScriptExecutor.ExecuteScript(scriptPath, encodedPassword);
         assert.ok(createTerminalStub.calledOnce);
-
-        // Test expired cache (mocking Date.now would be better but simple wait is not feasible for 5 mins)
-        // We can access the private cache if we cast to any, or we can trust ClearExpiredCache works if we implemented logic correctly.
-        // Let's rely on ClearCache working as proven above.
     });
 });

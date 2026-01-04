@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
-import TaskExecutor from '../../../../host/utilities/task-executor';
+import { TaskExecutor } from '../../../../host/utilities/task-executor';
 
 // Helper to wait for a condition to be true
 async function waitForCondition(condition: () => boolean, timeout: number = 1000, interval: number = 10): Promise<void> {
@@ -18,10 +18,12 @@ async function waitForCondition(condition: () => boolean, timeout: number = 1000
 suite('TaskExecutor Tests', () => {
     let executeTaskStub: sinon.SinonStub;
     let onDidEndTaskStub: sinon.SinonStub;
+    let taskExecutor: TaskExecutor;
 
     setup(() => {
         executeTaskStub = sinon.stub(vscode.tasks, 'executeTask');
         onDidEndTaskStub = sinon.stub(vscode.tasks, 'onDidEndTask');
+        taskExecutor = new TaskExecutor();
     });
 
     teardown(() => {
@@ -58,7 +60,7 @@ suite('TaskExecutor Tests', () => {
             return { dispose: () => {} };
         });
 
-        await TaskExecutor.ExecuteTask(task);
+        await taskExecutor.ExecuteTask(task);
 
         assert.ok(executeTaskStub.calledOnceWith(task));
     });
@@ -91,7 +93,7 @@ suite('TaskExecutor Tests', () => {
             return { dispose: () => {} };
         });
 
-        await TaskExecutor.ExecuteTask(task);
+        await taskExecutor.ExecuteTask(task);
 
         assert.ok(executeTaskStub.calledOnceWith(task));
     });
@@ -119,7 +121,7 @@ suite('TaskExecutor Tests', () => {
         });
 
         let completed = false;
-        const promise = TaskExecutor.ExecuteTask(task).then(() => {
+        const promise = taskExecutor.ExecuteTask(task).then(() => {
             completed = true;
         });
 
@@ -186,8 +188,8 @@ suite('TaskExecutor Tests', () => {
             }
         });
 
-        const promise1 = TaskExecutor.ExecuteTask(task1);
-        const promise2 = TaskExecutor.ExecuteTask(task2);
+        const promise1 = taskExecutor.ExecuteTask(task1);
+        const promise2 = taskExecutor.ExecuteTask(task2);
 
         // Wait for Task 1 to start
         await waitForCondition(() => task1Started);
@@ -198,9 +200,6 @@ suite('TaskExecutor Tests', () => {
         assert.strictEqual(task2Started, false, 'Task 2 should not start while Task 1 is running');
 
         // Complete task 1
-        // We need to find the listener corresponding to task 1.
-        // In this mock, we just fire all listeners with execution1,
-        // the TaskExecutor implementation checks `if (x.execution.task == execution.task)`
         listeners.forEach(l => l({ execution: execution1 } as vscode.TaskEndEvent));
 
         await promise1;

@@ -1,12 +1,12 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
-import NuGetConfigResolver, { SourceWithCredentials } from '../../../../host/utilities/nuget-config-resolver';
+import NuGetConfigResolver from '../../../../host/utilities/nuget-config-resolver';
 import PasswordScriptExecutor from '../../../../host/utilities/password-script-executor';
 import CredentialsCache from '../../../../host/utilities/credentials-cache';
+const os = require('os');
 
 suite('NuGetConfigResolver Tests', () => {
     let tmpDir: string;
@@ -25,14 +25,13 @@ suite('NuGetConfigResolver Tests', () => {
         executeScriptStub = sinon.stub(PasswordScriptExecutor, 'ExecuteScript');
         credentialsCacheStub = sinon.stub(CredentialsCache, 'set');
 
-        // Mock os.homedir to isolate tests from user's actual config
+        // Mock os.homedir
         osHomedirStub = sinon.stub(os, 'homedir').returns(tmpDir);
 
-        // Clear environment variables that might affect config resolution
+        // Clear environment variables
         delete process.env.APPDATA;
         delete process.env.ProgramFiles;
         delete process.env['ProgramFiles(x86)'];
-        // Also clear process.env.HOME if relevant (handled by os.homedir usually, but good to be safe)
 
         NuGetConfigResolver.ClearCache();
     });
@@ -40,8 +39,6 @@ suite('NuGetConfigResolver Tests', () => {
     teardown(() => {
         fs.rmSync(tmpDir, { recursive: true, force: true });
         sinon.restore();
-
-        // Restore env vars
         process.env = { ...originalEnv };
     });
 
@@ -108,7 +105,6 @@ suite('NuGetConfigResolver Tests', () => {
             }
         });
 
-        // Ensure no other sources are found
         const nugetConfigPath = path.join(tmpDir, 'nuget.config');
         fs.writeFileSync(nugetConfigPath, '<configuration><packageSources><clear/></packageSources></configuration>');
 
@@ -178,11 +174,9 @@ suite('NuGetConfigResolver Tests', () => {
     });
 
     test('FindAllConfigFiles respects priority (Workspace > User > Machine)', () => {
-         // Create workspace config
          const workspaceConfig = path.join(tmpDir, 'nuget.config');
          fs.writeFileSync(workspaceConfig, '<configuration><packageSources><add key="Workspace" value="w" /></packageSources></configuration>');
 
-         // Create user config (in the mocked homedir)
          const userNuGetDir = path.join(tmpDir, '.nuget', 'NuGet');
          fs.mkdirSync(userNuGetDir, { recursive: true });
          const userConfig = path.join(userNuGetDir, 'NuGet.Config');
@@ -190,7 +184,6 @@ suite('NuGetConfigResolver Tests', () => {
 
          const sources = NuGetConfigResolver.GetSourcesWithCredentials(tmpDir);
 
-         // Should find both
          assert.strictEqual(sources.length, 2);
          const names = sources.map(s => s.Name).sort();
          assert.deepStrictEqual(names, ['User', 'Workspace']);
