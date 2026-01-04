@@ -3,6 +3,18 @@ import * as vscode from 'vscode';
 import * as sinon from 'sinon';
 import TaskExecutor from '../../../../host/utilities/task-executor';
 
+// Helper to wait for a condition to be true
+async function waitForCondition(condition: () => boolean, timeout: number = 1000, interval: number = 10): Promise<void> {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        if (condition()) {
+            return;
+        }
+        await new Promise(resolve => setTimeout(resolve, interval));
+    }
+    throw new Error('Timeout waiting for condition');
+}
+
 suite('TaskExecutor Tests', () => {
     let executeTaskStub: sinon.SinonStub;
     let onDidEndTaskStub: sinon.SinonStub;
@@ -35,19 +47,18 @@ suite('TaskExecutor Tests', () => {
         let taskEndCallback: (e: vscode.TaskEndEvent) => void;
         onDidEndTaskStub.callsFake((callback) => {
             taskEndCallback = callback;
+
+            // Trigger completion after a short delay to simulate async task duration
+            setTimeout(() => {
+                if (taskEndCallback) {
+                    taskEndCallback({ execution } as vscode.TaskEndEvent);
+                }
+            }, 10);
+
             return { dispose: () => {} };
         });
 
-        const promise = TaskExecutor.ExecuteTask(task);
-
-        // Simulate task completion
-        setTimeout(() => {
-            if (taskEndCallback) {
-                taskEndCallback({ execution } as vscode.TaskEndEvent);
-            }
-        }, 10);
-
-        await promise;
+        await TaskExecutor.ExecuteTask(task);
 
         assert.ok(executeTaskStub.calledOnceWith(task));
     });
@@ -71,19 +82,16 @@ suite('TaskExecutor Tests', () => {
         let taskEndCallback: (e: vscode.TaskEndEvent) => void;
         onDidEndTaskStub.callsFake((callback) => {
             taskEndCallback = callback;
+             // Trigger completion
+             setTimeout(() => {
+                if (taskEndCallback) {
+                    taskEndCallback({ execution } as vscode.TaskEndEvent);
+                }
+            }, 10);
             return { dispose: () => {} };
         });
 
-        const promise = TaskExecutor.ExecuteTask(task);
-
-        // Simulate task completion
-        setTimeout(() => {
-            if (taskEndCallback) {
-                taskEndCallback({ execution } as vscode.TaskEndEvent);
-            }
-        }, 10);
-
-        await promise;
+        await TaskExecutor.ExecuteTask(task);
 
         assert.ok(executeTaskStub.calledOnceWith(task));
     });
@@ -104,7 +112,7 @@ suite('TaskExecutor Tests', () => {
 
         executeTaskStub.resolves(execution);
 
-        let taskEndCallback: (e: vscode.TaskEndEvent) => void;
+        let taskEndCallback: ((e: vscode.TaskEndEvent) => void) | undefined;
         onDidEndTaskStub.callsFake((callback) => {
             taskEndCallback = callback;
             return { dispose: () => {} };
@@ -115,7 +123,12 @@ suite('TaskExecutor Tests', () => {
             completed = true;
         });
 
+        // Verify executeTask was called but promise not resolved yet
+        await waitForCondition(() => executeTaskStub.called);
         assert.strictEqual(completed, false);
+
+        // Verify callback was registered
+        await waitForCondition(() => !!taskEndCallback);
 
         // Simulate task completion
         if (taskEndCallback!) {
@@ -149,15 +162,6 @@ suite('TaskExecutor Tests', () => {
         executeTaskStub.withArgs(task1).resolves(execution1);
         executeTaskStub.withArgs(task2).resolves(execution2);
 
-        let taskEndCallback: (e: vscode.TaskEndEvent) => void;
-        onDidEndTaskStub.callsFake((callback) => {
-            // Only capture the first one, or manage multiple listeners?
-            // The implementation calls onDidEndTask for each ExecuteTask call.
-            // So we need to handle multiple listeners.
-            return { dispose: () => {} };
-        });
-
-        // We need a more sophisticated stub for onDidEndTask to handle multiple subscriptions
         const listeners: ((e: vscode.TaskEndEvent) => void)[] = [];
         onDidEndTaskStub.callsFake((callback) => {
             listeners.push(callback);
@@ -185,20 +189,24 @@ suite('TaskExecutor Tests', () => {
         const promise1 = TaskExecutor.ExecuteTask(task1);
         const promise2 = TaskExecutor.ExecuteTask(task2);
 
-        // Allow some time for task1 to start
-        await new Promise(resolve => setTimeout(resolve, 10));
-
+        // Wait for Task 1 to start
+        await waitForCondition(() => task1Started);
         assert.strictEqual(task1Started, true);
-        assert.strictEqual(task2Started, false); // Should be waiting
+
+        // Ensure Task 2 has NOT started yet (give it a moment to potentially race)
+        await new Promise(resolve => setTimeout(resolve, 50));
+        assert.strictEqual(task2Started, false, 'Task 2 should not start while Task 1 is running');
 
         // Complete task 1
+        // We need to find the listener corresponding to task 1.
+        // In this mock, we just fire all listeners with execution1,
+        // the TaskExecutor implementation checks `if (x.execution.task == execution.task)`
         listeners.forEach(l => l({ execution: execution1 } as vscode.TaskEndEvent));
 
         await promise1;
 
-        // Allow some time for task2 to start
-        await new Promise(resolve => setTimeout(resolve, 10));
-
+        // Now Task 2 should start
+        await waitForCondition(() => task2Started);
         assert.strictEqual(task2Started, true);
 
         // Complete task 2

@@ -13,6 +13,10 @@ suite('NuGetConfigResolver Tests', () => {
     let getConfigurationStub: sinon.SinonStub;
     let executeScriptStub: sinon.SinonStub;
     let credentialsCacheStub: sinon.SinonStub;
+    let osHomedirStub: sinon.SinonStub;
+
+    // Save original env vars
+    const originalEnv = { ...process.env };
 
     setup(() => {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nuget-gallery-config-test-'));
@@ -21,12 +25,24 @@ suite('NuGetConfigResolver Tests', () => {
         executeScriptStub = sinon.stub(PasswordScriptExecutor, 'ExecuteScript');
         credentialsCacheStub = sinon.stub(CredentialsCache, 'set');
 
+        // Mock os.homedir to isolate tests from user's actual config
+        osHomedirStub = sinon.stub(os, 'homedir').returns(tmpDir);
+
+        // Clear environment variables that might affect config resolution
+        delete process.env.APPDATA;
+        delete process.env.ProgramFiles;
+        delete process.env['ProgramFiles(x86)'];
+        // Also clear process.env.HOME if relevant (handled by os.homedir usually, but good to be safe)
+
         NuGetConfigResolver.ClearCache();
     });
 
     teardown(() => {
         fs.rmSync(tmpDir, { recursive: true, force: true });
         sinon.restore();
+
+        // Restore env vars
+        process.env = { ...originalEnv };
     });
 
     test('GetSourcesAndDecodePasswords resolves sources from workspace config', async () => {
@@ -34,6 +50,7 @@ suite('NuGetConfigResolver Tests', () => {
         const xml = `
             <configuration>
                 <packageSources>
+                    <clear />
                     <add key="Test Source" value="https://test.source/v3/index.json" />
                 </packageSources>
             </configuration>
@@ -56,6 +73,7 @@ suite('NuGetConfigResolver Tests', () => {
         const xml = `
             <configuration>
                 <packageSources>
+                    <clear />
                     <add key="Private" value="https://private.source/v3/index.json" />
                 </packageSources>
                 <packageSourceCredentials>
@@ -90,6 +108,10 @@ suite('NuGetConfigResolver Tests', () => {
             }
         });
 
+        // Ensure no other sources are found
+        const nugetConfigPath = path.join(tmpDir, 'nuget.config');
+        fs.writeFileSync(nugetConfigPath, '<configuration><packageSources><clear/></packageSources></configuration>');
+
         const sources = await NuGetConfigResolver.GetSourcesAndDecodePasswords(tmpDir);
 
         assert.strictEqual(sources.length, 1);
@@ -102,6 +124,7 @@ suite('NuGetConfigResolver Tests', () => {
         const xml = `
             <configuration>
                 <packageSources>
+                    <clear />
                     <add key="Script Source" value="https://script.source" />
                 </packageSources>
                  <packageSourceCredentials>
@@ -155,34 +178,21 @@ suite('NuGetConfigResolver Tests', () => {
     });
 
     test('FindAllConfigFiles respects priority (Workspace > User > Machine)', () => {
-         // This is harder to test without mocking fs.existsSync completely or process.env,
-         // but we can test that it finds the file in our tmpDir when passed as workspaceRoot.
-
+         // Create workspace config
          const workspaceConfig = path.join(tmpDir, 'nuget.config');
-         fs.writeFileSync(workspaceConfig, '<configuration/>');
+         fs.writeFileSync(workspaceConfig, '<configuration><packageSources><add key="Workspace" value="w" /></packageSources></configuration>');
 
-         // We can't easily spy on private method FindAllConfigFiles,
-         // but GetSourcesWithCredentials calls it.
-         // Let's create a nuget.config in a subfolder and see if it picks up.
-
-         const subDir = path.join(tmpDir, '.nuget');
-         fs.mkdirSync(subDir);
-         const subConfig = path.join(subDir, 'NuGet.Config');
-         fs.writeFileSync(subConfig, `
-            <configuration>
-                <packageSources>
-                    <add key="Sub Source" value="https://sub.com" />
-                </packageSources>
-            </configuration>
-         `);
-
-         // If workspace root has config, it should pick it up.
-         // If we remove workspace config, it should pick up .nuget/NuGet.Config
-
-         fs.unlinkSync(workspaceConfig);
+         // Create user config (in the mocked homedir)
+         const userNuGetDir = path.join(tmpDir, '.nuget', 'NuGet');
+         fs.mkdirSync(userNuGetDir, { recursive: true });
+         const userConfig = path.join(userNuGetDir, 'NuGet.Config');
+         fs.writeFileSync(userConfig, '<configuration><packageSources><add key="User" value="u" /></packageSources></configuration>');
 
          const sources = NuGetConfigResolver.GetSourcesWithCredentials(tmpDir);
-         assert.strictEqual(sources.length, 1);
-         assert.strictEqual(sources[0].Name, 'Sub Source');
+
+         // Should find both
+         assert.strictEqual(sources.length, 2);
+         const names = sources.map(s => s.Name).sort();
+         assert.deepStrictEqual(names, ['User', 'Workspace']);
     });
 });
