@@ -252,7 +252,7 @@ suite('CpmResolver Tests', () => {
 
     test('ParsePackageVersions handles malformed XML gracefully', () => {
         const cpmPath = path.join(tmpDir, 'Directory.Packages.props');
-        // Malformed XML (missing closing tag)
+        // Malformed XML (missing closing tag) - xmldom is lenient so it will still parse this
         const cpmContent = `
             <Project>
                 <PropertyGroup>
@@ -266,19 +266,12 @@ suite('CpmResolver Tests', () => {
         let errorLogged = false;
         Logger.error = () => { errorLogged = true; };
 
-        // Even with malformed XML, it checks status first.
-        // IsCentralPackageManagementEnabled uses try/catch.
-        // ParsePackageVersions also uses try/catch.
-        // But for IsCentralPackageManagementEnabled, if it fails, it returns false.
-        // So GetPackageVersions calls IsCentralPackageManagementEnabled first.
-        // If the XML is so bad that IsCentralPackageManagementEnabled throws or fails to find "true", it returns null.
-
-        // Let's see if we can craft an XML that passes the boolean check but fails parsing versions,
-        // OR if the boolean check fails, verify it returns null.
-
+        // We expect xmldom to recover and parse the version
         const versions = CpmResolver.GetPackageVersions(projectPath);
-        assert.strictEqual(versions, null);
-        assert.strictEqual(errorLogged, true);
+        assert.notStrictEqual(versions, null);
+        assert.strictEqual(versions!.size, 1);
+        assert.strictEqual(versions!.get("Test.Package"), "1.0.0");
+        assert.strictEqual(errorLogged, false);
     });
 
     test('ParsePackageVersions handles items with missing attributes', () => {
@@ -303,7 +296,7 @@ suite('CpmResolver Tests', () => {
         assert.strictEqual(versions!.has('Missing.Version'), false);
     });
 
-    test('IsCentralPackageManagementEnabled returns false if project XML is invalid', () => {
+    test('IsCentralPackageManagementEnabled returns false if project file cannot be read', () => {
         const cpmPath = path.join(tmpDir, 'Directory.Packages.props');
         const cpmContent = `
             <Project>
@@ -313,8 +306,8 @@ suite('CpmResolver Tests', () => {
             </Project>`;
         fs.writeFileSync(cpmPath, cpmContent);
 
-        // Invalid project XML
-        fs.writeFileSync(projectPath, '<Project><Invalid');
+        // Delete project file to trigger read error
+        fs.unlinkSync(projectPath);
 
         let errorLogged = false;
         Logger.error = () => { errorLogged = true; };
