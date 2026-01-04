@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import * as sinon from 'sinon';
 import { EventEmitter } from 'events';
 import PasswordScriptExecutor from '../../../../host/utilities/password-script-executor';
-const child_process = require('child_process');
+import { SystemUtils } from '../../../../host/utilities/system-utils';
 
 suite('PasswordScriptExecutor Tests', () => {
     let createTerminalStub: sinon.SinonStub;
@@ -15,15 +15,13 @@ suite('PasswordScriptExecutor Tests', () => {
     setup(() => {
         createTerminalStub = sinon.stub(vscode.window, 'createTerminal');
 
-        // Mock child_process.spawn
+        // Mock SystemUtils.spawn
         processMock = new EventEmitter();
         (processMock as any).stdout = new EventEmitter();
         (processMock as any).stderr = new EventEmitter();
         (processMock as any).kill = () => {};
 
-        // child_process.spawn might be read-only if imported as * or via import { spawn }
-        // but here we required it, so it should be mutable or stubbable.
-        spawnStub = sinon.stub(child_process, 'spawn').returns(processMock);
+        spawnStub = sinon.stub(SystemUtils, 'spawn').returns(processMock);
 
         PasswordScriptExecutor.ClearCache();
 

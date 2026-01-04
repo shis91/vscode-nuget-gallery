@@ -2,11 +2,11 @@ import fs from "fs";
 import * as path from "path";
 import { DOMParser } from "@xmldom/xmldom";
 import xpath from "xpath";
-import os from "os";
 import * as vscode from "vscode";
 import PasswordScriptExecutor from "./password-script-executor";
 import CredentialsCache from "./credentials-cache";
 import { Logger } from "../../common/logger";
+import { SystemUtils } from "./system-utils";
 
 export type SourceWithCredentials = {
   Name: string;
@@ -167,7 +167,7 @@ export default class NuGetConfigResolver {
     }
 
     // 2. User config
-    const userProfile = os.homedir();
+    const userProfile = SystemUtils.getHomeDir();
     
     // On Windows, check %APPDATA%\NuGet\NuGet.Config first (Windows 11 standard location)
     if (process.platform === "win32" && process.env.APPDATA) {

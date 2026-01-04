@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { spawn } from "child_process";
 import { Logger } from "../../common/logger";
+import { SystemUtils } from "./system-utils";
 
 class PasswordScriptTerminal implements vscode.Pseudoterminal {
   private writeEmitter = new vscode.EventEmitter<string>();
@@ -40,22 +40,26 @@ class PasswordScriptTerminal implements vscode.Pseudoterminal {
       args = [this.encodedPassword];
     }
 
-    const proc = spawn(command, args, {
+    const proc = SystemUtils.spawn(command, args, {
       cwd: process.cwd(),
       env: process.env,
     });
 
-    proc.stdout.on('data', (data: Buffer) => {
-      const text = data.toString();
-      this.output += text;
-      this.writeEmitter.fire(text);
-    });
+    if (proc.stdout) {
+      proc.stdout.on('data', (data: Buffer) => {
+        const text = data.toString();
+        this.output += text;
+        this.writeEmitter.fire(text);
+      });
+    }
 
-    proc.stderr.on('data', (data: Buffer) => {
-      const text = data.toString();
-      this.errorOutput += text;
-      this.writeEmitter.fire(`\x1b[31m${text}\x1b[0m`);
-    });
+    if (proc.stderr) {
+      proc.stderr.on('data', (data: Buffer) => {
+        const text = data.toString();
+        this.errorOutput += text;
+        this.writeEmitter.fire(`\x1b[31m${text}\x1b[0m`);
+      });
+    }
 
     proc.on('error', (error) => {
       this.writeEmitter.fire(`\x1b[31mFailed to start process: ${error.message}\x1b[0m\r\n`);

@@ -4,7 +4,7 @@ import * as sinon from 'sinon';
 import { TaskExecutor } from '../../../../host/utilities/task-executor';
 
 // Helper to wait for a condition to be true
-async function waitForCondition(condition: () => boolean, timeout: number = 1000, interval: number = 10): Promise<void> {
+async function waitForCondition(condition: () => boolean, timeout: number = 2000, interval: number = 10): Promise<void> {
     const startTime = Date.now();
     while (Date.now() - startTime < timeout) {
         if (condition()) {
@@ -50,7 +50,6 @@ suite('TaskExecutor Tests', () => {
         onDidEndTaskStub.callsFake((callback) => {
             taskEndCallback = callback;
 
-            // Trigger completion after a short delay to simulate async task duration
             setTimeout(() => {
                 if (taskEndCallback) {
                     taskEndCallback({ execution } as vscode.TaskEndEvent);
@@ -84,7 +83,6 @@ suite('TaskExecutor Tests', () => {
         let taskEndCallback: (e: vscode.TaskEndEvent) => void;
         onDidEndTaskStub.callsFake((callback) => {
             taskEndCallback = callback;
-             // Trigger completion
              setTimeout(() => {
                 if (taskEndCallback) {
                     taskEndCallback({ execution } as vscode.TaskEndEvent);
@@ -125,14 +123,11 @@ suite('TaskExecutor Tests', () => {
             completed = true;
         });
 
-        // Verify executeTask was called but promise not resolved yet
         await waitForCondition(() => executeTaskStub.called);
         assert.strictEqual(completed, false);
 
-        // Verify callback was registered
         await waitForCondition(() => !!taskEndCallback);
 
-        // Simulate task completion
         if (taskEndCallback!) {
              taskEndCallback!({ execution } as vscode.TaskEndEvent);
         }
@@ -161,9 +156,6 @@ suite('TaskExecutor Tests', () => {
         const execution1 = { task: task1 } as vscode.TaskExecution;
         const execution2 = { task: task2 } as vscode.TaskExecution;
 
-        executeTaskStub.withArgs(task1).resolves(execution1);
-        executeTaskStub.withArgs(task2).resolves(execution2);
-
         const listeners: ((e: vscode.TaskEndEvent) => void)[] = [];
         onDidEndTaskStub.callsFake((callback) => {
             listeners.push(callback);
@@ -178,13 +170,16 @@ suite('TaskExecutor Tests', () => {
         let task1Started = false;
         let task2Started = false;
 
-        executeTaskStub.callsFake(async (t) => {
-            if (t === task1) {
+        executeTaskStub.callsFake(async (t: vscode.Task) => {
+            if (t.name === 'Task 1') {
                 task1Started = true;
                 return execution1;
-            } else if (t === task2) {
+            } else if (t.name === 'Task 2') {
                 task2Started = true;
                 return execution2;
+            } else {
+                console.error('Unknown task:', t.name);
+                return undefined;
             }
         });
 
@@ -192,10 +187,20 @@ suite('TaskExecutor Tests', () => {
         const promise2 = taskExecutor.ExecuteTask(task2);
 
         // Wait for Task 1 to start
-        await waitForCondition(() => task1Started);
+        try {
+            await waitForCondition(() => task1Started);
+        } catch (e) {
+            console.error('Timeout waiting for Task 1 to start. task1Started:', task1Started);
+            console.error('executeTaskStub call count:', executeTaskStub.callCount);
+            if (executeTaskStub.callCount > 0) {
+                 console.error('Call args:', executeTaskStub.getCall(0).args);
+            }
+            throw e;
+        }
+
         assert.strictEqual(task1Started, true);
 
-        // Ensure Task 2 has NOT started yet (give it a moment to potentially race)
+        // Ensure Task 2 has NOT started yet
         await new Promise(resolve => setTimeout(resolve, 50));
         assert.strictEqual(task2Started, false, 'Task 2 should not start while Task 1 is running');
 

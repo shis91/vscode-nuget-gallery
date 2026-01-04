@@ -6,6 +6,7 @@ import * as sinon from 'sinon';
 import NuGetConfigResolver from '../../../../host/utilities/nuget-config-resolver';
 import PasswordScriptExecutor from '../../../../host/utilities/password-script-executor';
 import CredentialsCache from '../../../../host/utilities/credentials-cache';
+import { SystemUtils } from '../../../../host/utilities/system-utils';
 const os = require('os');
 
 suite('NuGetConfigResolver Tests', () => {
@@ -13,7 +14,7 @@ suite('NuGetConfigResolver Tests', () => {
     let getConfigurationStub: sinon.SinonStub;
     let executeScriptStub: sinon.SinonStub;
     let credentialsCacheStub: sinon.SinonStub;
-    let osHomedirStub: sinon.SinonStub;
+    let getHomeDirStub: sinon.SinonStub;
 
     // Save original env vars
     const originalEnv = { ...process.env };
@@ -25,8 +26,8 @@ suite('NuGetConfigResolver Tests', () => {
         executeScriptStub = sinon.stub(PasswordScriptExecutor, 'ExecuteScript');
         credentialsCacheStub = sinon.stub(CredentialsCache, 'set');
 
-        // Mock os.homedir
-        osHomedirStub = sinon.stub(os, 'homedir').returns(tmpDir);
+        // Mock SystemUtils.getHomeDir
+        getHomeDirStub = sinon.stub(SystemUtils, 'getHomeDir').returns(tmpDir);
 
         // Clear environment variables
         delete process.env.APPDATA;
