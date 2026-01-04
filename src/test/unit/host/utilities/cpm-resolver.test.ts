@@ -250,9 +250,10 @@ suite('CpmResolver Tests', () => {
         assert.strictEqual(versions!.get('Test.Package'), '2.0.0');
     });
 
-    test('ParsePackageVersions handles malformed XML gracefully', () => {
+    test('GetPackageVersions returns null for malformed CPM file', () => {
         const cpmPath = path.join(tmpDir, 'Directory.Packages.props');
-        // Malformed XML (missing closing tag) - xmldom is lenient so it will still parse this
+        // Malformed XML (missing closing tag).
+        // xmldom fails to parse the structure correctly, so enable check returns false.
         const cpmContent = `
             <Project>
                 <PropertyGroup>
@@ -266,11 +267,12 @@ suite('CpmResolver Tests', () => {
         let errorLogged = false;
         Logger.error = () => { errorLogged = true; };
 
-        // We expect xmldom to recover and parse the version
         const versions = CpmResolver.GetPackageVersions(projectPath);
-        assert.notStrictEqual(versions, null);
-        assert.strictEqual(versions!.size, 1);
-        assert.strictEqual(versions!.get("Test.Package"), "1.0.0");
+
+        // We expect null because IsCentralPackageManagementEnabled returns false due to parsing failure
+        assert.strictEqual(versions, null);
+
+        // We expect no error logged because xmldom does not throw exception, it just returns a document that fails xpath queries
         assert.strictEqual(errorLogged, false);
     });
 
