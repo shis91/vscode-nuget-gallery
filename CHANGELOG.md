@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fix
 
 - Fix `Installed` tab error for Windows
+- Fixed parsing of `Version` attribute in project files
+- Fixed integration test runner configuration (CommonJS compatibility) and added unit tests for ProjectParser
 
 ## [1.2.3]
 
