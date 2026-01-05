@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Inline information about newer package versions in project files (configurable via `NugetGallery.enablePackageVersionInlineInfo`)
+- Decorator for file editor that shows which packages are available to update (configurable via `NugetGallery.enablePackageVersionInlineInfo`)
 - 'All' option in source dropdown to search and fetch packages from all configured sources simultaneously
 - Support for Central Package Management (CPM)
   - Automatically detects and resolves package versions from `Directory.Packages.props`
@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Source-level password script configuration through VS Code settings
 - Status bar loading indicator (configurable via `NugetGallery.statusBarLoadingIndicator`)
 - Configurable logging level (configurable via `NugetGallery.logLevel`)
+- Visual indication of failed package fetches in the package list
 
 ### Changed
 
