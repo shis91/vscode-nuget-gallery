@@ -7,6 +7,10 @@ import { Logger } from "../../common/logger";
 
 export class GetProjects implements IRequestHandler<GetProjectsRequest, GetProjectsResponse> {
   async HandleAsync(request: GetProjectsRequest): Promise<GetProjectsResponse> {
+    if (request.ForceReload) {
+      CpmResolver.ClearCache();
+    }
+
     Logger.info("GetProjects.HandleAsync: Handling request");
     let projectFiles = await vscode.workspace.findFiles(
       "**/*.{csproj,fsproj,vbproj}",
