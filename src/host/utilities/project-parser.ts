@@ -16,7 +16,28 @@ export default class ProjectParser {
       throw `${projectPath} has invalid content`;
     }
 
-    let packagesReferences = xpath.select("//ItemGroup/PackageReference", document) as Node[];
+    // Handle XML Namespaces
+    let select = xpath.useNamespaces({ "ns": "http://schemas.microsoft.com/developer/msbuild/2003" });
+    let packagesReferences: Node[] = [];
+
+    // Try selecting with namespace first
+    try {
+        if (document.documentElement.getAttribute("xmlns") === "http://schemas.microsoft.com/developer/msbuild/2003") {
+             packagesReferences = select("//ns:ItemGroup/ns:PackageReference", document) as Node[];
+        } else {
+             // Fallback to no namespace if not present
+             packagesReferences = xpath.select("//ItemGroup/PackageReference", document) as Node[];
+        }
+    } catch (e) {
+        // Fallback to local-name strategy if namespace selection fails or is complicated
+        packagesReferences = xpath.select("//*[local-name()='ItemGroup']/*[local-name()='PackageReference']", document) as Node[];
+    }
+
+    // If we still found nothing, try the local-name strategy as a final fallback
+    if (!packagesReferences || packagesReferences.length === 0) {
+         packagesReferences = xpath.select("//*[local-name()='ItemGroup']/*[local-name()='PackageReference']", document) as Node[];
+    }
+
     let project: Project = {
       Path: projectPath,
       Name: path.basename(projectPath),
@@ -26,6 +47,22 @@ export default class ProjectParser {
     (packagesReferences || []).forEach((p: any) => {
       let versionNode = p.attributes?.getNamedItem("Version");
       let version = versionNode ? versionNode.value : undefined;
+
+      // Check for child element if attribute is missing
+      if (!version) {
+          const versionChild = xpath.select("string(Version)", p); // Relative path from 'p'
+          if (versionChild) {
+              version = versionChild.toString();
+          }
+           // Also try namespaced child if applicable
+           if (!version) {
+               const versionChildNS = xpath.select("string(*[local-name()='Version'])", p);
+               if (versionChildNS) {
+                   version = versionChildNS.toString();
+               }
+           }
+      }
+
       const packageId = p.attributes?.getNamedItem("Include").value;
       
       if (cpmVersions) {
