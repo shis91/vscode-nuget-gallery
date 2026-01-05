@@ -27,7 +27,7 @@ const template = html<PackagesView>`
   <div class="container">
     <div class="col" id="packages">
       <search-bar
-        @reload-invoked=${(x) => x.ReloadInvoked()}
+        @reload-invoked=${(x, e) => x.ReloadInvoked((e.event as CustomEvent<boolean>).detail)}
         @filter-changed=${(x, e) =>
           x.UpdatePackagesFilters((e.event as CustomEvent<FilterEvent>).detail)}
       ></search-bar>
@@ -514,10 +514,10 @@ export class PackagesView extends FASTElement {
   }
 
   UpdatePackagesFilters(filters: FilterEvent) {
-    const prereleaseChanged = this.filters.Prerelease !== filters.Prerelease;
+    const forceReload = this.filters.Prerelease !== filters.Prerelease;
     this.filters = filters;
-    this.LoadPackages(false, prereleaseChanged);
-    this.LoadProjectsPackages(prereleaseChanged);
+    this.LoadPackages(false, forceReload);
+    this.LoadProjectsPackages(forceReload);
   }
 
   async SelectPackage(selectedPackage: PackageViewModel) {
@@ -562,9 +562,9 @@ export class PackagesView extends FASTElement {
       this.LoadPackages(true);
   }
 
-  ReloadInvoked() {
-    this.LoadPackages();
-    this.LoadProjectsPackages();
+  ReloadInvoked(forceReload: boolean = false) {
+    this.LoadPackages(false, forceReload);
+    this.LoadProjectsPackages(forceReload);
   }
 
   async LoadPackages(append: boolean = false, forceReload: boolean = false) {
