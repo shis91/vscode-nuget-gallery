@@ -36,15 +36,22 @@ const template = html<PackageRow>`
           (x) => x.package.Status == "MissingDetails",
           html<PackageRow>`<vscode-progress-ring
             class="loader"
-          ></vscode-progress-ring>`,
-          html<PackageRow>`${when(
-            (x) =>
-              x.package.Status == "Detailed" &&
-              x.package.Version != x.package.InstalledVersion,
-            html<PackageRow>`<span
-              class="codicon codicon-arrow-circle-up"
-            ></span>`
-          )}`
+          ></vscode-progress-ring>`
+        )}
+        ${when(
+          (x) => x.package.Status == "Error",
+          html<PackageRow>`<span
+            class="codicon codicon-error"
+            title="Failed to fetch package information"
+          ></span>`
+        )}
+        ${when(
+          (x) =>
+            x.package.Status == "Detailed" &&
+            x.package.Version != x.package.InstalledVersion,
+          html<PackageRow>`<span
+            class="codicon codicon-arrow-circle-up"
+          ></span>`
         )}
       `,
       html<PackageRow>`${(x) => x.package.Version}`
