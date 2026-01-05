@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Password script support for PowerShell (.ps1), batch (.bat/.cmd), and executable files
   - Cached credentials to minimize script executions (5-minute TTL)
   - Source-level password script configuration through VS Code settings
+- Status bar loading indicator (configurable via `NugetGallery.statusBarLoadingIndicator`)
+- Configurable logging level (configurable via `NugetGallery.logLevel`)
 
 ### Changed
 
@@ -32,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored NuGet API factory to use Basic Authentication with credentials from NuGet.config
 - Improved error handling and logging for package fetch operations
 - Fixed dotnet CLI command argument order for package add/remove operations
+
+### Fixed
+
+- Fixed project reload issue
 
 ### Removed
 
