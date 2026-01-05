@@ -17,7 +17,12 @@ import {
   GET_PACKAGE,
   GET_PACKAGES,
   GET_PROJECTS,
+  UPDATE_STATUS_BAR,
 } from "@/common/messaging/core/commands";
+import {
+  UpdateStatusBarRequest,
+  UpdateStatusBarResponse,
+} from "@/common/messaging/update-status-bar";
 import codicon from "@/web/styles/codicon.css";
 import { scrollableBase } from "@/web/styles/base.css";
 import { PackageViewModel, ProjectViewModel } from "../types";
@@ -469,13 +474,66 @@ export class PackagesView extends FASTElement {
         )
     );
 
-    if (forceReload) {
-      for (let i = 0; i < this.projectsPackages.length; i++) {
-        await this.UpdatePackage(this.projectsPackages[i], forceReload);
+    const total = this.projectsPackages.length;
+    let completed = 0;
+
+    if (total > 0) {
+      await this.mediator.PublishAsync<
+        UpdateStatusBarRequest,
+        UpdateStatusBarResponse
+      >(UPDATE_STATUS_BAR, {
+        Percentage: 0,
+        Message: "Loading installed packages...",
+      });
+    }
+
+    try {
+      if (forceReload) {
+        for (let i = 0; i < this.projectsPackages.length; i++) {
+          await this.UpdatePackage(this.projectsPackages[i], forceReload);
+          completed++;
+          await this.mediator.PublishAsync<
+            UpdateStatusBarRequest,
+            UpdateStatusBarResponse
+          >(UPDATE_STATUS_BAR, {
+            Percentage: (completed / total) * 100,
+            Message: "Loading installed packages...",
+          });
+        }
+      } else {
+        // Even for async fire-and-forget, we can track completions if we wanted to await Promise.all,
+        // but existing logic was fire-and-forget. To show progress correctly, we must track promises.
+        // However, converting to Promise.all might change behavior (blocking UI?).
+        // The original code:
+        // for (let i = 0; i < this.projectsPackages.length; i++) {
+        //   this.UpdatePackage(this.projectsPackages[i], forceReload);
+        // }
+        // This means it returns immediately.
+        // If we want progress, we should probably just let it be 0-100 async or switch to Promise.all.
+        // Given the user wants progress, let's wrap them in a Promise.all to track progress.
+
+        const promises = this.projectsPackages.map(async (pkg) => {
+          await this.UpdatePackage(pkg, forceReload);
+          completed++;
+          // We don't await the status update here to keep it snappy
+          this.mediator.PublishAsync<
+            UpdateStatusBarRequest,
+            UpdateStatusBarResponse
+          >(UPDATE_STATUS_BAR, {
+            Percentage: (completed / total) * 100,
+            Message: "Loading installed packages...",
+          });
+        });
+        await Promise.all(promises);
       }
-    } else {
-      for (let i = 0; i < this.projectsPackages.length; i++) {
-        this.UpdatePackage(this.projectsPackages[i], forceReload);
+    } finally {
+      if (total > 0) {
+        await this.mediator.PublishAsync<
+          UpdateStatusBarRequest,
+          UpdateStatusBarResponse
+        >(UPDATE_STATUS_BAR, {
+          Percentage: null,
+        });
       }
     }
   }
