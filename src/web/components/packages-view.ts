@@ -419,7 +419,7 @@ export class PackagesView extends FASTElement {
     );
   }
 
-  LoadProjectsPackages(forceReload: boolean = false) {
+  async LoadProjectsPackages(forceReload: boolean = false) {
     var packages = this.projects
       ?.flatMap((p) => p.Packages)
       .filter((x) =>
@@ -469,8 +469,14 @@ export class PackagesView extends FASTElement {
         )
     );
 
-    for (let i = 0; i < this.projectsPackages.length; i++) {
-      this.UpdatePackage(this.projectsPackages[i], forceReload);
+    if (forceReload) {
+      for (let i = 0; i < this.projectsPackages.length; i++) {
+        await this.UpdatePackage(this.projectsPackages[i], forceReload);
+      }
+    } else {
+      for (let i = 0; i < this.projectsPackages.length; i++) {
+        this.UpdatePackage(this.projectsPackages[i], forceReload);
+      }
     }
   }
 
@@ -614,6 +620,6 @@ export class PackagesView extends FASTElement {
     >(GET_PROJECTS, {});
 
     this.projects = result.Projects.map((x) => new ProjectViewModel(x));
-    this.LoadProjectsPackages();
+    await this.LoadProjectsPackages();
   }
 }
