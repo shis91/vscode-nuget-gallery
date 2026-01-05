@@ -2,7 +2,7 @@ import { Mutex } from "async-mutex";
 import * as vscode from "vscode";
 import { Logger } from "../../common/logger";
 
-class TaskExecutor {
+export class TaskExecutor {
   private globalMutex: Mutex = new Mutex();
 
   async ExecuteTask(task: vscode.Task): Promise<void> {
