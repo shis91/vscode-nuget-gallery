@@ -27,7 +27,7 @@ const template = html<PackagesView>`
   <div class="container">
     <div class="col" id="packages">
       <search-bar
-        @reload-invoked=${(x) => x.ReloadInvoked()}
+        @reload-invoked=${(x, c) => x.ReloadInvoked(c.event as CustomEvent)}
         @filter-changed=${(x, e) =>
           x.UpdatePackagesFilters((e.event as CustomEvent<FilterEvent>).detail)}
       ></search-bar>
@@ -554,12 +554,13 @@ export class PackagesView extends FASTElement {
       this.LoadPackages(true);
   }
 
-  ReloadInvoked() {
-    this.LoadPackages();
+  ReloadInvoked(event?: CustomEvent) {
+    const forceRefresh = event?.detail?.forceRefresh ?? false;
+    this.LoadPackages(false, forceRefresh);
     this.LoadProjectsPackages();
   }
 
-  async LoadPackages(append: boolean = false) {
+  async LoadPackages(append: boolean = false, forceRefresh: boolean = false) {
     let _getLoadPackageRequest = () => {
       return {
         Url: this.filters.SourceUrl,
@@ -569,6 +570,7 @@ export class PackagesView extends FASTElement {
         Skip: this.packagesPage * PACKAGE_FETCH_TAKE,
         Take: PACKAGE_FETCH_TAKE,
         PasswordScriptPath: this.CurrentSource?.PasswordScriptPath,
+        ForceRefresh: forceRefresh,
       };
     };
 
@@ -592,6 +594,11 @@ export class PackagesView extends FASTElement {
     if (result.IsFailure) {
       this.packagesLoadingError = true;
     } else {
+      let searchBar = this.shadowRoot?.querySelector("search-bar") as any;
+      if (searchBar) {
+        searchBar.isFromCache = result.IsFromCache;
+        searchBar.cacheExpires = result.CacheExpires;
+      }
       let packagesViewModels = result.Packages!.map(
         (x) => new PackageViewModel(x)
       );

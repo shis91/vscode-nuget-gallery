@@ -26,11 +26,13 @@ export class GetPackages implements IRequestHandler<GetPackagesRequest, GetPacka
                 request.Filter,
                 request.Prerelease,
                 request.Skip,
-                request.Take
+                request.Take,
+                request.ForceRefresh
               );
             } catch (error) {
               Logger.error(`GetPackages.HandleAsync: Failed to fetch packages from ${source.Url}`, error);
-              return { data: [] };
+              // Return a compatible object on failure to avoid Promise.all failure
+              return { data: [], isFromCache: false, cacheExpires: new Date() };
             }
           });
 
@@ -38,6 +40,8 @@ export class GetPackages implements IRequestHandler<GetPackagesRequest, GetPacka
           let allPackages: Package[] = [];
           const seenIds = new Set<string>();
 
+          // Note: Aggregated results don't easily map to a single cache status.
+          // We'll default IsFromCache to false for aggregated results for now.
           results.forEach(result => {
             result.data.forEach(pkg => {
               if (!seenIds.has(pkg.Id)) {
@@ -49,7 +53,9 @@ export class GetPackages implements IRequestHandler<GetPackagesRequest, GetPacka
 
           return {
             IsFailure: false,
-            Packages: allPackages
+            Packages: allPackages,
+            IsFromCache: false,
+            CacheExpires: undefined
           };
         } catch (err: any) {
            Logger.error(`GetPackages.HandleAsync: Failed to fetch packages from all sources`, err);
@@ -68,12 +74,15 @@ export class GetPackages implements IRequestHandler<GetPackagesRequest, GetPacka
         request.Filter,
         request.Prerelease,
         request.Skip,
-        request.Take
+        request.Take,
+        request.ForceRefresh
       );
       Logger.info(`GetPackages.HandleAsync: Successfully fetched ${packages.data.length} packages`);
       let result: GetPackagesResponse = {
         IsFailure: false,
         Packages: packages.data,
+        IsFromCache: packages.isFromCache,
+        CacheExpires: packages.cacheExpires
       };
       return result;
     } catch (err: any) {

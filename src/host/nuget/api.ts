@@ -4,6 +4,8 @@ import { Logger } from "../../common/logger";
 
 type GetPackagesResponse = {
   data: Array<Package>;
+  isFromCache: boolean;
+  cacheExpires: Date;
 };
 
 type GetPackageResponse = {
@@ -21,6 +23,7 @@ export default class NuGetApi {
   private _packageInfoUrl: string = "";
   private http: AxiosInstance;
   private _packageCache: Map<string, { data: Package, timestamp: number }> = new Map();
+  private _searchCache: Map<string, { data: Array<Package>, timestamp: number }> = new Map();
   private readonly _cacheTtl: number = 5 * 60 * 1000; // 5 minutes
 
   constructor(
@@ -45,8 +48,25 @@ export default class NuGetApi {
     filter: string,
     prerelease: boolean,
     skip: number,
-    take: number
+    take: number,
+    forceRefresh: boolean = false
   ): Promise<GetPackagesResponse> {
+    const cacheKey = `${filter}|${prerelease}|${skip}|${take}`;
+    const cached = this._searchCache.get(cacheKey);
+
+    if (!forceRefresh && cached && (Date.now() - cached.timestamp < this._cacheTtl)) {
+      Logger.debug(`NuGetApi.GetPackagesAsync: Returning cached packages for ${cacheKey}`);
+      return {
+        data: cached.data,
+        isFromCache: true,
+        cacheExpires: new Date(cached.timestamp + this._cacheTtl)
+      };
+    }
+
+    if (forceRefresh) {
+      Logger.debug(`NuGetApi.GetPackagesAsync: Forcing refresh for ${cacheKey}`);
+    }
+
     Logger.debug(`NuGetApi.GetPackagesAsync: Fetching packages (filter: '${filter}', prerelease: ${prerelease}, skip: ${skip}, take: ${take})`);
     await this.EnsureSearchUrl();
     let result = await this.ExecuteGet(this._searchUrl, {
@@ -78,8 +98,12 @@ export default class NuGetApi {
       Tags: item.tags || [],
     }));
 
+    this._searchCache.set(cacheKey, { data: mappedData, timestamp: Date.now() });
+
     return {
       data: mappedData,
+      isFromCache: false,
+      cacheExpires: new Date(Date.now() + this._cacheTtl)
     };
   }
 
@@ -155,8 +179,15 @@ export default class NuGetApi {
   public ClearPackageCache(packageId?: string) {
     if (packageId) {
       this._packageCache.delete(packageId.toLowerCase());
+      // Clear search cache as well when a package is updated, or maybe specific keys?
+      // For now, clearing all search cache seems safest or just leaving it alone?
+      // If a package is updated, the search result might be stale.
+      // But typically search results point to package details.
+      // Let's clear search cache completely to be safe.
+      this._searchCache.clear();
     } else {
       this._packageCache.clear();
+      this._searchCache.clear();
     }
   }
 

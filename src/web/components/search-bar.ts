@@ -1,4 +1,4 @@
-import { FASTElement, css, customElement, html, observable, repeat } from "@microsoft/fast-element";
+import { FASTElement, css, customElement, html, observable, repeat, when } from "@microsoft/fast-element";
 
 import codicon from "@/web/styles/codicon.css";
 import { Configuration } from "../registrations";
@@ -16,6 +16,15 @@ const template = html<SearchBar>`
       <vscode-button appearance="icon" @click=${(x) => x.ReloadClicked()}>
         <span class="codicon codicon-refresh"></span>
       </vscode-button>
+      ${when(
+        (x) => x.isFromCache,
+        html<SearchBar>`
+          <span
+            class="cache-indicator codicon codicon-history"
+            title="From cache. Expires: ${(x) => x.GetFormattedCacheDate()}"
+          ></span>
+        `
+      )}
     </div>
     <div class="search-bar-right">
       <vscode-dropdown
@@ -47,10 +56,16 @@ const styles = css`
       flex: 1;
       display: flex;
       gap: 4px;
+      align-items: center;
       .search-text-field {
         flex: 1;
         max-width: 340px;
         min-width: 140px;
+      }
+      .cache-indicator {
+        margin-left: 5px;
+        cursor: help;
+        color: var(--vscode-descriptionForeground);
       }
     }
     .search-bar-right {
@@ -77,6 +92,8 @@ export class SearchBar extends FASTElement {
   @observable prerelase: boolean = true;
   @observable filterQuery: string = "";
   @observable selectedSourceUrl: string = "";
+  @observable isFromCache: boolean = false;
+  @observable cacheExpires: Date | string | undefined;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -100,7 +117,7 @@ export class SearchBar extends FASTElement {
   }
 
   ReloadClicked() {
-    this.$emit("reload-invoked");
+    this.$emit("reload-invoked", { forceRefresh: true });
   }
 
   EmitFilterChangedEvent() {
@@ -110,5 +127,14 @@ export class SearchBar extends FASTElement {
       SourceUrl: this.selectedSourceUrl,
     };
     this.$emit("filter-changed", filterEvent);
+  }
+
+  GetFormattedCacheDate() {
+    if (!this.cacheExpires) return "";
+    try {
+      return new Date(this.cacheExpires).toLocaleString();
+    } catch (e) {
+      return this.cacheExpires.toString();
+    }
   }
 }
