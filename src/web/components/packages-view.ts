@@ -419,7 +419,7 @@ export class PackagesView extends FASTElement {
     );
   }
 
-  LoadProjectsPackages(clearCache: boolean = false) {
+  LoadProjectsPackages(forceReload: boolean = false) {
     var packages = this.projects
       ?.flatMap((p) => p.Packages)
       .filter((x) =>
@@ -470,7 +470,7 @@ export class PackagesView extends FASTElement {
     );
 
     for (let i = 0; i < this.projectsPackages.length; i++) {
-      this.UpdatePackage(this.projectsPackages[i], clearCache);
+      this.UpdatePackage(this.projectsPackages[i], forceReload);
     }
   }
 
@@ -485,7 +485,7 @@ export class PackagesView extends FASTElement {
     }
   }
 
-  async UpdatePackage(projectPackage: PackageViewModel, clearCache: boolean = false) {
+  async UpdatePackage(projectPackage: PackageViewModel, forceReload: boolean = false) {
     let result = await this.mediator.PublishAsync<
       GetPackageRequest,
       GetPackageResponse
@@ -495,7 +495,7 @@ export class PackagesView extends FASTElement {
       SourceName: this.CurrentSource?.Name,
       Prerelease: this.filters.Prerelease,
       PasswordScriptPath: this.CurrentSource?.PasswordScriptPath,
-      ClearCache: clearCache,
+      ForceReload: forceReload,
     });
 
     if (result.IsFailure || !result.Package) {
@@ -561,7 +561,7 @@ export class PackagesView extends FASTElement {
     this.LoadProjectsPackages();
   }
 
-  async LoadPackages(append: boolean = false, clearCache: boolean = false) {
+  async LoadPackages(append: boolean = false, forceReload: boolean = false) {
     let _getLoadPackageRequest = () => {
       return {
         Url: this.filters.SourceUrl,
@@ -571,7 +571,7 @@ export class PackagesView extends FASTElement {
         Skip: this.packagesPage * PACKAGE_FETCH_TAKE,
         Take: PACKAGE_FETCH_TAKE,
         PasswordScriptPath: this.CurrentSource?.PasswordScriptPath,
-        ClearCache: clearCache,
+        ForceReload: forceReload,
       };
     };
 

@@ -8,7 +8,7 @@ export class GetPackages implements IRequestHandler<GetPackagesRequest, GetPacka
   async HandleAsync(request: GetPackagesRequest): Promise<GetPackagesResponse> {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-    if (request.ClearCache) {
+    if (request.ForceReload) {
       nugetApiFactory.ClearCache();
     }
 
