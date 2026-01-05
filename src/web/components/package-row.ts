@@ -13,7 +13,8 @@ import codicon from "@/web/styles/codicon.css";
 
 const template = html<PackageRow>`
 <div class="package-row ${(x) =>
-  x.package.Selected ? "package-row-selected" : ""}">
+  x.package.Selected ? "package-row-selected" : ""} ${(x) =>
+  x.package.Status === "Error" ? "package-row-error" : ""}">
     <div class="package-title">
     <img class="icon" src=${(x) => x.IconUrl} @error="${(x) =>
   (x.iconUrl =
@@ -71,6 +72,13 @@ const styles = css`
 
     &.package-row-selected {
       background-color: var(--vscode-list-inactiveSelectionBackground);
+    }
+
+    &.package-row-error {
+      .name,
+      .package-version {
+        color: var(--vscode-errorForeground);
+      }
     }
 
     &:hover {
