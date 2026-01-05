@@ -4,6 +4,7 @@ type GetPackageRequest = {
   Id: string;
   Prerelease: boolean;
   PasswordScriptPath?: string;
+  ClearCache?: boolean;
 };
 
 type GetPackageResponse = {

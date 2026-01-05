@@ -419,7 +419,7 @@ export class PackagesView extends FASTElement {
     );
   }
 
-  LoadProjectsPackages() {
+  LoadProjectsPackages(clearCache: boolean = false) {
     var packages = this.projects
       ?.flatMap((p) => p.Packages)
       .filter((x) =>
@@ -470,7 +470,7 @@ export class PackagesView extends FASTElement {
     );
 
     for (let i = 0; i < this.projectsPackages.length; i++) {
-      this.UpdatePackage(this.projectsPackages[i]);
+      this.UpdatePackage(this.projectsPackages[i], clearCache);
     }
   }
 
@@ -485,7 +485,7 @@ export class PackagesView extends FASTElement {
     }
   }
 
-  async UpdatePackage(projectPackage: PackageViewModel) {
+  async UpdatePackage(projectPackage: PackageViewModel, clearCache: boolean = false) {
     let result = await this.mediator.PublishAsync<
       GetPackageRequest,
       GetPackageResponse
@@ -495,6 +495,7 @@ export class PackagesView extends FASTElement {
       SourceName: this.CurrentSource?.Name,
       Prerelease: this.filters.Prerelease,
       PasswordScriptPath: this.CurrentSource?.PasswordScriptPath,
+      ClearCache: clearCache,
     });
 
     if (result.IsFailure || !result.Package) {
@@ -507,9 +508,10 @@ export class PackagesView extends FASTElement {
   }
 
   UpdatePackagesFilters(filters: FilterEvent) {
+    const prereleaseChanged = this.filters.Prerelease !== filters.Prerelease;
     this.filters = filters;
-    this.LoadPackages();
-    this.LoadProjectsPackages();
+    this.LoadPackages(false, prereleaseChanged);
+    this.LoadProjectsPackages(prereleaseChanged);
   }
 
   async SelectPackage(selectedPackage: PackageViewModel) {
@@ -559,7 +561,7 @@ export class PackagesView extends FASTElement {
     this.LoadProjectsPackages();
   }
 
-  async LoadPackages(append: boolean = false) {
+  async LoadPackages(append: boolean = false, clearCache: boolean = false) {
     let _getLoadPackageRequest = () => {
       return {
         Url: this.filters.SourceUrl,
@@ -569,6 +571,7 @@ export class PackagesView extends FASTElement {
         Skip: this.packagesPage * PACKAGE_FETCH_TAKE,
         Take: PACKAGE_FETCH_TAKE,
         PasswordScriptPath: this.CurrentSource?.PasswordScriptPath,
+        ClearCache: clearCache,
       };
     };
 
