@@ -31,37 +31,51 @@ export class GetPackages implements IRequestHandler<GetPackagesRequest, GetPacka
               );
             } catch (error) {
               Logger.error(`GetPackages.HandleAsync: Failed to fetch packages from ${source.Url}`, error);
-              // Return a compatible object on failure to avoid Promise.all failure
-              return { data: [], isFromCache: false, cacheExpires: new Date() };
+              return null;
             }
           });
 
-          const results = await Promise.all(promises);
+          const resultsRaw = await Promise.all(promises);
+          const results = resultsRaw.filter((r): r is NonNullable<typeof r> => r !== null);
+
           let allPackages: Package[] = [];
           const seenIds = new Set<string>();
 
-          // Note: Aggregated results don't easily map to a single cache status.
-          // We'll default IsFromCache to false for aggregated results for now.
+          let minCacheExpires: number | undefined;
+          let isFromCache = false;
+
           results.forEach(result => {
+            // Aggregate packages
             result.data.forEach(pkg => {
               if (!seenIds.has(pkg.Id)) {
                 seenIds.add(pkg.Id);
                 allPackages.push(pkg);
               }
             });
+
+            // Aggregate Cache Info
+            if (result.isFromCache) {
+              isFromCache = true;
+            }
+
+            const expires = result.cacheExpires.getTime();
+            if (minCacheExpires === undefined || expires < minCacheExpires) {
+              minCacheExpires = expires;
+            }
           });
 
           return {
             IsFailure: false,
             Packages: allPackages,
-            IsFromCache: false,
-            CacheExpires: undefined
+            IsFromCache: isFromCache,
+            CacheExpires: minCacheExpires !== undefined ? new Date(minCacheExpires) : undefined
           };
         } catch (err: any) {
            Logger.error(`GetPackages.HandleAsync: Failed to fetch packages from all sources`, err);
            return {
              IsFailure: true,
-             Error: { Message: "Failed to fetch packages from all sources" }
+             Error: { Message: "Failed to fetch packages from all sources" },
+             CacheExpires: undefined
            };
         }
       }
@@ -92,6 +106,7 @@ export class GetPackages implements IRequestHandler<GetPackagesRequest, GetPacka
         Error: {
           Message: "Failed to fetch packages",
         },
+        CacheExpires: undefined
       };
       return result;
     }
