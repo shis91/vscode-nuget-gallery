@@ -460,9 +460,9 @@ export class PackagesView extends FASTElement {
               Version: x,
             })),
             InstalledVersion:
-              (Versions as Array<string>)?.length == 1
-                ? (Versions as Array<string>)[0]
-                : "Multiple",
+              (Versions as Array<string>)?.length > 1
+                ? "Multiple"
+                : (Versions as Array<string>)?.[0] ?? "",
             Version: "",
             Description: "",
             LicenseUrl: "",
