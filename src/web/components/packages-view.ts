@@ -164,6 +164,10 @@ const template = html<PackagesView>`
                             x,
                             c: ExecutionContext<PackagesView, any>
                           ) => c.parent.selectedVersion}
+                          :sourceUrl=${(
+                            x,
+                            c: ExecutionContext<PackagesView, any>
+                          ) => c.parent.selectedPackage?.SourceUrl}
                         >
                         </project-row>
                       `
@@ -543,7 +547,7 @@ export class PackagesView extends FASTElement {
       projectPackage.Status = "Error";
     } else {
       if (projectPackage.Version != "") result.Package.Version = "";
-      projectPackage.UpdatePackage(result.Package);
+      projectPackage.UpdatePackage(result.Package, result.SourceUrl);
       projectPackage.Status = "Detailed";
     }
   }
@@ -581,7 +585,7 @@ export class PackagesView extends FASTElement {
         packageToUpdate.Status = "Error";
       } else {
         if (packageToUpdate.Version != "") result.Package.Version = "";
-        packageToUpdate.UpdatePackage(result.Package);
+        packageToUpdate.UpdatePackage(result.Package, result.SourceUrl);
         packageToUpdate.Status = "Detailed";
       }
     }

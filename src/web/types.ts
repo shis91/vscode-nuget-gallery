@@ -20,6 +20,7 @@ export class PackageViewModel {
   @observable Versions: Array<string>;
   @observable Status: PackageViewModelStatus;
   @observable Selected: boolean = false;
+  @observable SourceUrl: string = "";
 
   constructor(model: Package, status: PackageViewModelStatus = "Detailed") {
     this._authors = model.Authors;
@@ -39,7 +40,7 @@ export class PackageViewModel {
     this.Status = status;
   }
 
-  UpdatePackage(model: Package) {
+  UpdatePackage(model: Package, sourceUrl?: string) {
     this._authors = model.Authors;
     this.Id = model.Id;
     this.Name = model.Name;
@@ -53,6 +54,7 @@ export class PackageViewModel {
     this.Versions = model.Versions?.map((x) => x.Version).reverse() ?? [];
     this._tags = model.Tags;
     this.Model = model;
+    if (sourceUrl) this.SourceUrl = sourceUrl;
   }
 
   get Authors() {

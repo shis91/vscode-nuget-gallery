@@ -17,11 +17,11 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
     
     if (request.Type === "UPDATE") {
       await this.RemovePackage(request);
-      await this.AddPackage(request, skipRestore);
+      await this.AddPackage(request, skipRestore, request.SourceUrl);
     } else if (request.Type === "UNINSTALL") {
       await this.RemovePackage(request);
     } else {
-      await this.AddPackage(request, skipRestore);
+      await this.AddPackage(request, skipRestore, request.SourceUrl);
     }
 
     CpmResolver.ClearCache();
@@ -53,7 +53,7 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
   }
 
   // INSTALL: .NET 10 format: dotnet package add <PACKAGE_ID> --project <PROJECT> --version <VERSION>
-  private async AddPackage(request: UpdateProjectRequest, skipRestore: boolean): Promise<void> {
+  private async AddPackage(request: UpdateProjectRequest, skipRestore: boolean, sourceUrl?: string): Promise<void> {
     Logger.info(`UpdateProject.AddPackage: Adding package ${request.PackageId} version ${request.Version || 'latest'}`);
     const args: Array<string> = ["package", "add", request.PackageId, "--project", request.ProjectPath.replace(/\\/g, "/")];
     if (request.Version) {
@@ -62,6 +62,10 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
       }
     if (skipRestore) {
       args.push("--no-restore");
+    }
+    if (sourceUrl) {
+      args.push("-s");
+      args.push(sourceUrl);
     }
 
     Logger.debug(`UpdateProject.AddPackage: Executing: dotnet ${args.join(" ")}`);
