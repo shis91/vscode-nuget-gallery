@@ -1,6 +1,7 @@
 import '../../web-setup';
 import * as assert from 'assert';
 import { PackageDetailsComponent } from '@/web/components/package-details';
+import { PackageViewModel } from '@/web/types';
 import { DOM } from '@microsoft/fast-element';
 import { GET_PACKAGE_DETAILS } from '@/common/messaging/core/commands';
 
@@ -33,21 +34,26 @@ suite('PackageDetails Component', () => {
     });
 
     test('should render package info correctly', async () => {
-        const pkg = {
+        const pkg: Package = {
             Id: 'Test.Package',
+            Name: 'Test.Package',
             Version: '1.0.0',
             Description: 'Test Description',
-            Authors: 'Test Author',
+            Authors: ['Test Author'],
             LicenseUrl: 'https://license.url',
             ProjectUrl: 'https://project.url',
-            Tags: 'tag1 tag2',
+            Tags: ['tag1', 'tag2'],
             IconUrl: '',
-            Summary: '',
+            Registration: '',
+            Versions: [],
             TotalDownloads: 0,
-            Verified: false
+            Verified: false,
+            InstalledVersion: ''
         };
 
-        packageDetails.package = pkg;
+        const viewModel = new PackageViewModel(pkg);
+
+        packageDetails.package = viewModel;
         await DOM.nextUpdate();
 
         const shadowRoot = packageDetails.shadowRoot;
@@ -76,7 +82,7 @@ suite('PackageDetails Component', () => {
         };
 
         assert.strictEqual(getTextByTitle('Author(s):'), 'Test Author');
-        assert.strictEqual(getTextByTitle('Tags:'), 'tag1 tag2');
+        assert.strictEqual(getTextByTitle('Tags:'), 'tag1, tag2');
 
         const licenseLink = getLinkByTitle('License:');
         assert.strictEqual(licenseLink?.getAttribute('href'), 'https://license.url');
