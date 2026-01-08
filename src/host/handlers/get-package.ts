@@ -19,6 +19,7 @@ export class GetPackage implements IRequestHandler<GetPackageRequest, GetPackage
             return {
               IsFailure: false,
               Package: packageResult.data,
+              SourceUrl: source.Url,
             };
           }
         } catch (err) {
@@ -51,6 +52,7 @@ export class GetPackage implements IRequestHandler<GetPackageRequest, GetPackage
       let result: GetPackageResponse = {
         IsFailure: false,
         Package: packageResult.data,
+        SourceUrl: request.Url,
       };
       return result;
     } catch (err: any) {

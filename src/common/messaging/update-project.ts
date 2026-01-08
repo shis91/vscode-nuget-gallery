@@ -5,6 +5,7 @@ type UpdateProjectRequest = {
   PackageId: string;
   Version?: string;
   Type: UpdateType;
+  SourceUrl?: string;
 };
 
 type UpdateProjectResponse = {

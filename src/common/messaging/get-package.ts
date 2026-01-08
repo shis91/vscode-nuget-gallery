@@ -10,5 +10,6 @@ type GetPackageRequest = {
 type GetPackageResponse = {
   IsFailure: boolean;
   Package?: Package;
+  SourceUrl?: string;
   Error?: HttpError;
 };

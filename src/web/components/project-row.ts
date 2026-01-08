@@ -111,6 +111,7 @@ export class ProjectRow extends FASTElement {
   @attr project!: ProjectViewModel;
   @attr packageId!: string;
   @attr packageVersion!: string;
+  @attr sourceUrl!: string;
   @observable loaders: ObservableDictionary<boolean> = new ObservableDictionary<boolean>();
 
   @volatile
@@ -125,6 +126,7 @@ export class ProjectRow extends FASTElement {
       ProjectPath: this.project.Path,
       PackageId: this.packageId,
       Version: this.packageVersion,
+      SourceUrl: this.sourceUrl,
     };
     this.loaders.Add(request.PackageId, true);
     let result = await this.mediator.PublishAsync<UpdateProjectRequest, UpdateProjectResponse>(
