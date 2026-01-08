@@ -237,8 +237,20 @@ suite('PackageDetails Component', () => {
         const depContainer = shadowRoot?.querySelector('expandable-container[title="Dependencies"]');
         assert.ok(depContainer);
 
-        const lists = depContainer.querySelectorAll('ul > li'); // Frameworks
-        assert.strictEqual(lists.length, 2);
+        // The structure is:
+        // .dependencies
+        //   ul
+        //     li (Framework 1)
+        //       text
+        //       ul
+        //         li (Dep 1)
+        //         li (Dep 2)
+        //     li (Framework 2)
+        // ...
+
+        // Use direct child selector to count frameworks
+        const frameworkLists = depContainer.querySelectorAll('.dependencies > ul > li');
+        assert.strictEqual(frameworkLists.length, 2);
 
         // Check content (simplified check)
         const content = depContainer.textContent;
