@@ -91,7 +91,7 @@ suite('PackageDetails Component', () => {
         assert.strictEqual(projectLink?.getAttribute('href'), 'https://project.url');
     });
 
-    test('should trigger ReloadDependencies when source changes', async () => {
+    test('should trigger ReloadDependencies when source changes and fetchDependencies is true', async () => {
         let called = false;
         publishAsyncStub = (command: string, request: any) => {
             if (command === GET_PACKAGE_DETAILS) {
@@ -100,6 +100,7 @@ suite('PackageDetails Component', () => {
             return Promise.resolve({ Package: null });
         };
 
+        packageDetails.fetchDependencies = true; // Enable auto-fetch
         packageDetails.packageVersionUrl = 'https://package.url';
         packageDetails.source = 'https://source.url'; // This triggers change
 
@@ -109,7 +110,7 @@ suite('PackageDetails Component', () => {
         assert.ok(called, "ReloadDependencies should be called");
     });
 
-    test('should trigger ReloadDependencies when packageVersionUrl changes', async () => {
+    test('should NOT trigger ReloadDependencies when source changes and fetchDependencies is false', async () => {
         let called = false;
         publishAsyncStub = (command: string, request: any) => {
             if (command === GET_PACKAGE_DETAILS) {
@@ -118,6 +119,26 @@ suite('PackageDetails Component', () => {
             return Promise.resolve({ Package: null });
         };
 
+        packageDetails.fetchDependencies = false; // Disable auto-fetch
+        packageDetails.packageVersionUrl = 'https://package.url';
+        packageDetails.source = 'https://source.url'; // This triggers change
+
+        // Wait for async operations
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        assert.strictEqual(called, false, "ReloadDependencies should NOT be called");
+    });
+
+    test('should trigger ReloadDependencies when packageVersionUrl changes and fetchDependencies is true', async () => {
+        let called = false;
+        publishAsyncStub = (command: string, request: any) => {
+            if (command === GET_PACKAGE_DETAILS) {
+                called = true;
+            }
+            return Promise.resolve({ Package: null });
+        };
+
+        packageDetails.fetchDependencies = true;
         packageDetails.source = 'https://source.url';
         packageDetails.packageVersionUrl = 'https://package.url'; // This triggers change
 
@@ -140,6 +161,7 @@ suite('PackageDetails Component', () => {
         const versionUrl = 'https://package.url/v1';
         const passwordScript = 'script.sh';
 
+        packageDetails.fetchDependencies = true;
         packageDetails.passwordScriptPath = passwordScript;
         packageDetails.source = source;
         packageDetails.packageVersionUrl = versionUrl;
@@ -169,6 +191,7 @@ suite('PackageDetails Component', () => {
 
         publishAsyncStub = () => promise;
 
+        packageDetails.fetchDependencies = true;
         packageDetails.source = 'src';
         packageDetails.packageVersionUrl = 'url';
 
@@ -199,6 +222,7 @@ suite('PackageDetails Component', () => {
             return secondPromise;
         };
 
+        packageDetails.fetchDependencies = true;
         packageDetails.source = 'src';
 
         // First change
@@ -219,6 +243,29 @@ suite('PackageDetails Component', () => {
         await new Promise(resolve => setTimeout(resolve, 0));
 
         assert.deepStrictEqual(packageDetails.packageDetails, { id: 'new' });
+    });
+
+    test('should load dependencies when LoadDependencies is called', async () => {
+        let called = false;
+        publishAsyncStub = (command: string, request: any) => {
+            if (command === GET_PACKAGE_DETAILS) {
+                called = true;
+            }
+            return Promise.resolve({ Package: null });
+        };
+
+        packageDetails.fetchDependencies = false;
+        packageDetails.source = 'https://source.url';
+        packageDetails.packageVersionUrl = 'https://package.url';
+
+        // Initially not called
+        await new Promise(resolve => setTimeout(resolve, 0));
+        assert.strictEqual(called, false);
+
+        // Call LoadDependencies
+        await packageDetails.LoadDependencies();
+
+        assert.strictEqual(called, true, "LoadDependencies should trigger fetch");
     });
 
     test('should render dependencies correctly', async () => {

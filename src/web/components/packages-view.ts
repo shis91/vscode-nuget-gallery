@@ -146,6 +146,7 @@ const template = html<PackagesView>`
                   :packageVersionUrl=${(x) => x.PackageVersionUrl}
                   :source=${(x) => x.filters.SourceUrl}
                   :passwordScriptPath=${(x) => x.CurrentSource?.PasswordScriptPath}
+                  :fetchDependencies=${(x) => x.configuration.Configuration?.FetchPackageDependencies}
                 ></package-details>
                 <div class="separator"></div>
                 ${when(

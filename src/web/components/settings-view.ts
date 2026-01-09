@@ -50,6 +50,18 @@ const template = html<SettingsView>`
         </vscode-checkbox>
       </div>
 
+      <div class="section">
+        <div class="title">Automatically fetch package dependencies when viewing package details</div>
+        <vscode-checkbox
+          :checked=${(x) => x.fetchPackageDependencies}
+          @change=${(x, c) => {
+            x.fetchPackageDependencies = (c.event.target! as HTMLInputElement).checked;
+            x.UpdateConfiguration();
+          }}
+        >
+        </vscode-checkbox>
+      </div>
+
       <div class="section sources-section">
         <div class="title">Sources</div>
         <div class="subtitle">NuGet sources</div>
@@ -221,6 +233,7 @@ export class SettingsView extends FASTElement {
   @IMediator mediator!: IMediator;
   @observable skipRestore: boolean = false;
   @observable enablePackageVersionInlineInfo: boolean = false;
+  @observable fetchPackageDependencies: boolean = false;
   @observable newSource: SourceViewModel | null = null;
   @observable sources: Array<SourceViewModel> = [];
 
@@ -229,6 +242,7 @@ export class SettingsView extends FASTElement {
     let config = this.configuration.Configuration;
     this.skipRestore = config?.SkipRestore ?? false;
     this.enablePackageVersionInlineInfo = config?.EnablePackageVersionInlineInfo ?? false;
+    this.fetchPackageDependencies = config?.FetchPackageDependencies ?? false;
     this.sources = config?.Sources.map((x) => new SourceViewModel(x)) ?? [];
   }
 
@@ -241,6 +255,7 @@ export class SettingsView extends FASTElement {
           EnablePackageVersionInlineInfo: this.enablePackageVersionInlineInfo,
           Sources: this.sources.map((x) => x.GetModel()),
           StatusBarLoadingIndicator: this.configuration.Configuration?.StatusBarLoadingIndicator ?? false,
+          FetchPackageDependencies: this.fetchPackageDependencies,
         },
       }
     );
