@@ -51,31 +51,44 @@ const template = html<PackageDetailsComponent>`
       html<PackageDetailsComponent>`<vscode-progress-ring class="loader"></vscode-progress-ring>`,
       html<PackageDetailsComponent>` <div class="dependencies">
         ${when(
-          (x) => Object.keys(x.packageDetails?.dependencies?.frameworks || {}).length > 0,
-          html<PackageDetailsComponent>`
-            <ul>
-              ${repeat(
-                (x) => Object.keys(x.packageDetails?.dependencies?.frameworks || {}),
-                html<string>`
-                  <li>
-                    ${(x) => x}
-                    <ul>
-                      ${repeat(
-                        (x, y: ExecutionContext<PackageDetailsComponent, any>) =>
-                          y.parent.packageDetails?.dependencies?.frameworks[x] || [],
-                        html<PackageDependency>`<li>
-                          ${(x) => x.package} ${(x) => x.versionRange}
-                        </li>`
-                      )}
-                    </ul>
-                  </li>
-                `
-              )}
-            </ul>
-          `,
-          html<PackageDetailsComponent>`<div class="no-dependencies">
-            <span class="codicon codicon-info"></span>
-            <span> No dependencies</span>
+          (x) => x.packageDetails,
+          html<PackageDetailsComponent>`${when(
+            (x) => Object.keys(x.packageDetails?.dependencies?.frameworks || {}).length > 0,
+            html<PackageDetailsComponent>`
+              <ul>
+                ${repeat(
+                  (x) => Object.keys(x.packageDetails?.dependencies?.frameworks || {}),
+                  html<string>`
+                    <li>
+                      ${(x) => x}
+                      <ul>
+                        ${repeat(
+                          (x, y: ExecutionContext<PackageDetailsComponent, any>) =>
+                            y.parent.packageDetails?.dependencies?.frameworks[x] || [],
+                          html<PackageDependency>`<li>
+                            ${(x) => x.package} ${(x) => x.versionRange}
+                          </li>`
+                        )}
+                      </ul>
+                    </li>
+                  `
+                )}
+              </ul>
+            `,
+            html<PackageDetailsComponent>`<div class="no-dependencies">
+              <span class="codicon codicon-info"></span>
+              <span> No dependencies</span>
+            </div>`
+          )}`,
+          html<PackageDetailsComponent>`<div class="load-dependencies">
+            ${when(
+              (x) => !x.packageDetailsLoading,
+              html<PackageDetailsComponent>`
+                <vscode-button @click="${(x) => x.LoadDependencies()}" appearance="secondary">
+                  Load Dependencies
+                </vscode-button>
+              `
+            )}
           </div>`
         )}
       </div>`
@@ -112,6 +125,10 @@ const styles = css`
       vertical-align: middle;
     }
   }
+
+  .load-dependencies {
+    margin: 8px 0px 8px 4px;
+  }
 `;
 
 @customElement({
@@ -125,6 +142,7 @@ export class PackageDetailsComponent extends FASTElement {
   @attr packageVersionUrl: string = "";
   @attr source: string = "";
   @attr passwordScriptPath?: string;
+  @attr({ mode: "boolean" }) fetchDependencies: boolean = false;
 
   @observable packageDetailsLoading: boolean = false;
   @observable packageDetails?: PackageDetails;
@@ -137,11 +155,18 @@ export class PackageDetailsComponent extends FASTElement {
     this.ReloadDependencies();
   }
 
-  private async ReloadDependencies() {
+  async LoadDependencies() {
+    this.ReloadDependencies(true);
+  }
+
+  private async ReloadDependencies(force: boolean = false) {
     this.packageDetails = undefined;
 
     if (!this.source) return;
     if (!this.packageVersionUrl) return;
+
+    if (!force && !this.fetchDependencies) return;
+
     this.packageDetailsLoading = true;
 
     let request: GetPackageDetailsRequest = {

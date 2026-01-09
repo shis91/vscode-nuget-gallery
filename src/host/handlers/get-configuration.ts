@@ -49,6 +49,7 @@ export default class GetConfiguration implements IRequestHandler<GetConfiguratio
         EnablePackageVersionInlineInfo: config.get("enablePackageVersionInlineInfo") ?? false,
         Sources: sources,
         StatusBarLoadingIndicator: config.get("statusBarLoadingIndicator") ?? false,
+        FetchPackageDependencies: config.get("fetchPackageDependencies") ?? false,
       },
     };
 

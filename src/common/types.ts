@@ -55,6 +55,7 @@ type Configuration = {
   EnablePackageVersionInlineInfo: boolean;
   Sources: Array<Source>;
   StatusBarLoadingIndicator: boolean;
+  FetchPackageDependencies: boolean;
 };
 
 type HttpError = {
