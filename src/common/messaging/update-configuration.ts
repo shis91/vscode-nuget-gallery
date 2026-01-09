@@ -3,3 +3,5 @@ type UpdateConfigurationRequest = {
 };
 
 type UpdateConfigurationResponse = {};
+
+export { UpdateConfigurationRequest, UpdateConfigurationResponse };

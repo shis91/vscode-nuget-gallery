@@ -1,6 +1,8 @@
 import { IRequestHandler } from "@/common/messaging/core/types";
 import * as vscode from "vscode";
 import { Logger } from "../../common/logger";
+import { UpdateConfigurationRequest, UpdateConfigurationResponse } from "@/common/messaging/update-configuration";
+
 export default class UpdateConfiguration
   implements IRequestHandler<UpdateConfigurationRequest, UpdateConfigurationResponse>
 {
