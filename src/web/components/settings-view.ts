@@ -15,6 +15,7 @@ import { Configuration, IMediator, Router } from "../registrations";
 import { SourceViewModel } from "../types";
 import lodash from "lodash";
 import { UPDATE_CONFIGURATION } from "@/common/messaging/core/commands";
+import { UpdateConfigurationRequest, UpdateConfigurationResponse } from "@/common/messaging/update-configuration";
 
 const template = html<SettingsView>`
   <div class="container">
