@@ -503,6 +503,7 @@ export class PackagesView extends FASTElement {
             Tags: [],
             Registration: "",
             Authors: [],
+            Vulnerabilities: [],
           },
           "MissingDetails"
         )
