@@ -74,8 +74,10 @@ export default class NuGetApi {
         item.versions.map((v: any) => ({
           Version: v.version,
           Id: v["@id"],
+          Vulnerabilities: [],
         })) || [],
       Tags: item.tags || [],
+      Vulnerabilities: [],
     }));
 
     return {
@@ -143,8 +145,16 @@ export default class NuGetApi {
         items.map((v: any) => ({
           Version: v.catalogEntry.version,
           Id: v["@id"],
+          Vulnerabilities: v.catalogEntry.vulnerabilities?.map((vuln: any) => ({
+            Severity: parseInt(vuln.severity),
+            AdvisoryUrl: vuln.advisoryUrl
+          })) || []
         })) || [],
       Tags: catalogEntry?.tags || [],
+      Vulnerabilities: catalogEntry?.vulnerabilities?.map((vuln: any) => ({
+        Severity: parseInt(vuln.severity),
+        AdvisoryUrl: vuln.advisoryUrl
+      })) || []
     };
 
     this._packageCache.set(cacheKey, { data: packageObject, timestamp: Date.now() });

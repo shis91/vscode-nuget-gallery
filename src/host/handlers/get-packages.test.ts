@@ -31,7 +31,8 @@ suite('GetPackages Handler Tests', () => {
         Verified: false,
         InstalledVersion: '',
         Versions: [],
-        Tags: []
+        Tags: [],
+        Vulnerabilities: []
     });
 
     const mockPackages: Package[] = [

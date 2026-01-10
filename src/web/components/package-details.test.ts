@@ -48,7 +48,8 @@ suite('PackageDetails Component', () => {
             Versions: [],
             TotalDownloads: 0,
             Verified: false,
-            InstalledVersion: ''
+            InstalledVersion: '',
+      Vulnerabilities: [],
         };
 
         const viewModel = new PackageViewModel(pkg);
