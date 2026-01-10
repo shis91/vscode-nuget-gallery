@@ -13,11 +13,18 @@ type Package = {
   Version: string;
   Versions: Array<PackageVersion>;
   Tags: Array<string>;
+  Vulnerabilities: Array<Vulnerability>;
 };
 
 type PackageVersion = {
   Version: string;
   Id: string;
+  Vulnerabilities: Array<Vulnerability>;
+};
+
+type Vulnerability = {
+  Severity: number; // 0=Low, 1=Moderate, 2=High, 3=Critical (based on NuGet API usually, or we map it)
+  AdvisoryUrl: string;
 };
 
 type PackageDetails = {

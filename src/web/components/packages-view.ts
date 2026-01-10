@@ -46,6 +46,7 @@ const template = html<PackagesView>`
       <vscode-panels class="tabs" aria-label="Default">
         <vscode-panel-tab class="tab" id="tab-1">BROWSE</vscode-panel-tab>
         <vscode-panel-tab class="tab" id="tab-2">INSTALLED</vscode-panel-tab>
+        <vscode-panel-tab class="tab" id="tab-3">VULNERABLE</vscode-panel-tab>
         <vscode-panel-view class="views" id="view-1">
           <div
             class="packages-container"
@@ -84,6 +85,22 @@ const template = html<PackagesView>`
           <div class="packages-container">
             ${repeat(
               (x) => x.projectsPackages,
+              html<PackageViewModel>`
+                <package-row
+                  :showInstalledVersion="${(x) => true}"
+                  :package=${(x) => x}
+                  @click=${(x, c: ExecutionContext<PackagesView, any>) =>
+                    c.parent.SelectPackage(x)}
+                >
+                </package-row>
+              `
+            )}
+          </div>
+        </vscode-panel-view>
+        <vscode-panel-view class="views installed-packages" id="view-3">
+          <div class="packages-container">
+            ${repeat(
+              (x) => x.vulnerablePackages,
               html<PackageViewModel>`
                 <package-row
                   :showInstalledVersion="${(x) => true}"
@@ -435,6 +452,11 @@ export class PackagesView extends FASTElement {
     );
   }
 
+  @volatile
+  get vulnerablePackages() {
+    return this.projectsPackages.filter((x) => x.Vulnerable);
+  }
+
   async LoadProjectsPackages(forceReload: boolean = false) {
     var packages = this.projects
       ?.flatMap((p) => p.Packages)
@@ -466,6 +488,7 @@ export class PackagesView extends FASTElement {
             Versions: (Versions as Array<string>)?.map((x) => ({
               Id: "",
               Version: x,
+              Vulnerabilities: [],
             })),
             InstalledVersion:
               (Versions as Array<string>)?.length > 1

@@ -18,6 +18,8 @@ export class PackageViewModel {
   @observable InstalledVersion: string;
   @observable Version: string;
   @observable Versions: Array<string>;
+  @observable Vulnerable: boolean;
+  @observable Vulnerabilities: Array<Vulnerability>;
   @observable Status: PackageViewModelStatus;
   @observable Selected: boolean = false;
   @observable SourceUrl: string = "";
@@ -35,6 +37,8 @@ export class PackageViewModel {
     this.Version = model.Version;
     this.InstalledVersion = model.InstalledVersion;
     this.Versions = model.Versions?.map((x) => x.Version).reverse() ?? [];
+    this.Vulnerabilities = model.Vulnerabilities ?? [];
+    this.Vulnerable = this.Vulnerabilities.length > 0;
     this._tags = model.Tags;
     this.Model = model;
     this.Status = status;
@@ -52,6 +56,8 @@ export class PackageViewModel {
     this.Verified = model.Verified;
     if (model.Version != "") this.Version = model.Version;
     this.Versions = model.Versions?.map((x) => x.Version).reverse() ?? [];
+    this.Vulnerabilities = model.Vulnerabilities ?? [];
+    this.Vulnerable = this.Vulnerabilities.length > 0;
     this._tags = model.Tags;
     this.Model = model;
     if (sourceUrl) this.SourceUrl = sourceUrl;
