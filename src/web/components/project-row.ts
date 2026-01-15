@@ -12,6 +12,10 @@ import {
 import codicon from "@/web/styles/codicon.css";
 import { IMediator } from "../registrations";
 import { UPDATE_PROJECT } from "@/common/messaging/core/commands";
+import {
+  UpdateProjectRequest,
+  UpdateProjectResponse,
+} from "@/common/messaging/update-project";
 import { ProjectPackageViewModel, ProjectViewModel } from "../types";
 import ObservableDictionary from "../utilities/ObservableDictionary";
 

@@ -18,11 +18,16 @@ import {
   GET_PACKAGES,
   GET_PROJECTS,
   UPDATE_STATUS_BAR,
+  UPDATE_PROJECT,
 } from "@/common/messaging/core/commands";
 import {
   UpdateStatusBarRequest,
   UpdateStatusBarResponse,
 } from "@/common/messaging/update-status-bar";
+import {
+  UpdateProjectRequest,
+  UpdateProjectResponse,
+} from "@/common/messaging/update-project";
 import {
   GetPackageRequest,
   GetPackageResponse,
@@ -132,6 +137,13 @@ const template = html<PackagesView>`
                       html<string>` <vscode-option>${(x) => x}</vscode-option> `
                     )}
                   </vscode-dropdown>
+                  <vscode-button
+                    appearance="icon"
+                    title="Install/Update to all projects"
+                    @click=${(x) => x.InstallToAllProjects()}
+                  >
+                    <span class="codicon codicon-diff-added"></span>
+                  </vscode-button>
                   <vscode-button
                     appearance="icon"
                     @click=${(x) => x.LoadProjects()}
@@ -664,5 +676,69 @@ export class PackagesView extends FASTElement {
 
     this.projects = result.Projects.map((x) => new ProjectViewModel(x));
     await this.LoadProjectsPackages(forceReload);
+  }
+
+  async InstallToAllProjects() {
+    if (!this.selectedPackage || !this.selectedVersion) return;
+
+    const projectsToUpdate = this.projects.filter((project) => {
+      const pkg = project.Packages.find(
+        (x) => x.Id.toLowerCase() === this.selectedPackage!.Name.toLowerCase()
+      );
+      return pkg?.Version !== this.selectedVersion;
+    });
+
+    if (projectsToUpdate.length === 0) return;
+
+    const total = projectsToUpdate.length;
+    let completed = 0;
+
+    await this.mediator.PublishAsync<
+      UpdateStatusBarRequest,
+      UpdateStatusBarResponse
+    >(UPDATE_STATUS_BAR, {
+      Percentage: 0,
+      Message: `Installing ${this.selectedPackage.Name} to ${total} projects...`,
+    });
+
+    try {
+      for (const project of projectsToUpdate) {
+        const pkg = project.Packages.find(
+          (x) => x.Id.toLowerCase() === this.selectedPackage!.Name.toLowerCase()
+        );
+        const type = pkg ? "UPDATE" : "INSTALL";
+
+        let request: UpdateProjectRequest = {
+          Type: type,
+          ProjectPath: project.Path,
+          PackageId: this.selectedPackage!.Name,
+          Version: this.selectedVersion,
+          SourceUrl: this.selectedPackage!.SourceUrl || this.filters.SourceUrl,
+        };
+
+        await this.mediator.PublishAsync<
+          UpdateProjectRequest,
+          UpdateProjectResponse
+        >(UPDATE_PROJECT, request);
+
+        completed++;
+        await this.mediator.PublishAsync<
+          UpdateStatusBarRequest,
+          UpdateStatusBarResponse
+        >(UPDATE_STATUS_BAR, {
+          Percentage: (completed / total) * 100,
+          Message: `Installing ${this.selectedPackage.Name} to ${total} projects...`,
+        });
+      }
+    } finally {
+      await this.mediator.PublishAsync<
+        UpdateStatusBarRequest,
+        UpdateStatusBarResponse
+      >(UPDATE_STATUS_BAR, {
+        Percentage: null,
+      });
+
+      await this.LoadProjects();
+    }
   }
 }
