@@ -1,4 +1,8 @@
 import { IRequestHandler } from "@/common/messaging/core/types";
+import {
+  UpdateProjectRequest,
+  UpdateProjectResponse,
+} from "@/common/messaging/update-project";
 import * as vscode from "vscode";
 import ProjectParser from "../utilities/project-parser";
 import TaskExecutor from "../utilities/task-executor";
@@ -7,8 +11,12 @@ import nugetApiFactory from "../nuget/api-factory";
 import { Logger } from "../../common/logger";
 import StatusBarUtils from "../utilities/status-bar-utils";
 
-export default class UpdateProject implements IRequestHandler<UpdateProjectRequest, UpdateProjectResponse> {
-  async HandleAsync(request: UpdateProjectRequest): Promise<UpdateProjectResponse> {
+export default class UpdateProject
+  implements IRequestHandler<UpdateProjectRequest, UpdateProjectResponse>
+{
+  async HandleAsync(
+    request: UpdateProjectRequest
+  ): Promise<UpdateProjectResponse> {
     Logger.info(`UpdateProject.HandleAsync: Handling ${request.Type} for package ${request.PackageId} in project ${request.ProjectPath}`);
     const skipRestoreConfiguration = vscode.workspace.getConfiguration("NugetGallery").get<string>("skipRestore") ?? "";
     const isCpmEnabled = CpmResolver.GetPackageVersions(request.ProjectPath) !== null;

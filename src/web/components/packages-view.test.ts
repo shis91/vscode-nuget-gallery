@@ -711,4 +711,117 @@ suite('PackagesView Component', () => {
             assert.strictEqual(lastCall.args[1].Percentage, null);
         });
     });
+
+    suite('InstallToAllProjects', () => {
+        test('should do nothing if no package is selected', async () => {
+            packagesView.selectedPackage = null;
+            await packagesView.InstallToAllProjects();
+            assert.ok(mockMediator.PublishAsync.notCalled);
+        });
+
+        test('should do nothing if no projects require update', async () => {
+            const pkg = new PackageViewModel(createMockPackage({ Id: 'Pkg1', Name: 'Pkg1' }));
+            packagesView.selectedPackage = pkg;
+            packagesView.selectedVersion = '1.0.0';
+
+            // Project has same version
+            packagesView.projects = [
+                new ProjectViewModel(createMockProject('Project1', [{ Id: 'Pkg1', Version: '1.0.0' }]))
+            ];
+
+            await packagesView.InstallToAllProjects();
+
+            assert.ok(mockMediator.PublishAsync.notCalled);
+        });
+
+        test('should install to projects missing the package', async () => {
+            const pkg = new PackageViewModel(createMockPackage({ Id: 'Pkg1', Name: 'Pkg1' }));
+            packagesView.selectedPackage = pkg;
+            packagesView.selectedVersion = '1.0.0';
+
+            // Project missing package
+            packagesView.projects = [
+                new ProjectViewModel(createMockProject('Project1', []))
+            ];
+
+            // Mock success response
+            mockMediator.PublishAsync.withArgs('UpdateProject').resolves({
+                IsCpmEnabled: false
+            });
+            mockMediator.PublishAsync.withArgs('GetProjects').resolves({ Projects: [] });
+
+            await packagesView.InstallToAllProjects();
+
+            const updateCall = mockMediator.PublishAsync.getCalls().find(c => c.args[0] === 'UpdateProject');
+            assert.ok(updateCall, 'Should call UpdateProject');
+            assert.strictEqual(updateCall.args[1].Type, 'INSTALL');
+            assert.strictEqual(updateCall.args[1].PackageId, 'Pkg1');
+        });
+
+        test('should update projects with different version', async () => {
+            const pkg = new PackageViewModel(createMockPackage({ Id: 'Pkg1', Name: 'Pkg1' }));
+            packagesView.selectedPackage = pkg;
+            packagesView.selectedVersion = '2.0.0';
+
+            // Project has old version
+            packagesView.projects = [
+                new ProjectViewModel(createMockProject('Project1', [{ Id: 'Pkg1', Version: '1.0.0' }]))
+            ];
+
+             // Mock success response
+            mockMediator.PublishAsync.withArgs('UpdateProject').resolves({
+                IsCpmEnabled: false
+            });
+            mockMediator.PublishAsync.withArgs('GetProjects').resolves({ Projects: [] });
+
+            await packagesView.InstallToAllProjects();
+
+            const updateCall = mockMediator.PublishAsync.getCalls().find(c => c.args[0] === 'UpdateProject');
+            assert.ok(updateCall, 'Should call UpdateProject');
+            assert.strictEqual(updateCall.args[1].Type, 'UPDATE');
+            assert.strictEqual(updateCall.args[1].Version, '2.0.0');
+        });
+
+        test('should reload projects after completion', async () => {
+            const pkg = new PackageViewModel(createMockPackage({ Id: 'Pkg1', Name: 'Pkg1' }));
+            packagesView.selectedPackage = pkg;
+            packagesView.selectedVersion = '1.0.0';
+            packagesView.projects = [
+                new ProjectViewModel(createMockProject('Project1', []))
+            ];
+
+            mockMediator.PublishAsync.withArgs('UpdateProject').resolves({
+                IsCpmEnabled: false
+            });
+            mockMediator.PublishAsync.withArgs('GetProjects').resolves({ Projects: [] });
+
+            await packagesView.InstallToAllProjects();
+
+            const getProjectsCall = mockMediator.PublishAsync.getCalls().find(
+                c => c.args[0] === 'GetProjects'
+            );
+            assert.ok(getProjectsCall, 'Should reload projects at end');
+        });
+
+        test('should use correct status messages during process', async () => {
+             const pkg = new PackageViewModel(createMockPackage({ Id: 'Pkg1', Name: 'Pkg1' }));
+            packagesView.selectedPackage = pkg;
+            packagesView.selectedVersion = '1.0.0';
+            packagesView.projects = [
+                new ProjectViewModel(createMockProject('Project1', []))
+            ];
+
+            mockMediator.PublishAsync.withArgs('UpdateProject').resolves({ IsCpmEnabled: false });
+            mockMediator.PublishAsync.withArgs('GetProjects').resolves({ Projects: [] });
+
+            await packagesView.InstallToAllProjects();
+
+            const statusBarCalls = mockMediator.PublishAsync.getCalls().filter(
+                c => c.args[0] === 'UpdateStatusBar'
+            );
+
+            assert.ok(statusBarCalls.length >= 2);
+            assert.strictEqual(statusBarCalls[statusBarCalls.length - 1].args[1].Percentage, null);
+        });
+    });
 });

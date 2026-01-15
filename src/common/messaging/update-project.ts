@@ -1,6 +1,6 @@
-type UpdateType = "INSTALL" | "UNINSTALL" | "UPDATE";
+export type UpdateType = "INSTALL" | "UNINSTALL" | "UPDATE";
 
-type UpdateProjectRequest = {
+export type UpdateProjectRequest = {
   ProjectPath: string;
   PackageId: string;
   Version?: string;
@@ -8,7 +8,7 @@ type UpdateProjectRequest = {
   SourceUrl?: string;
 };
 
-type UpdateProjectResponse = {
+export type UpdateProjectResponse = {
   Project: Project;
   IsCpmEnabled: boolean;
 };

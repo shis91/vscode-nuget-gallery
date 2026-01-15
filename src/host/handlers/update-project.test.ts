@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
 import * as vscode from 'vscode';
+import { UpdateProjectRequest } from '@/common/messaging/update-project';
 import UpdateProject from './update-project';
 import TaskExecutor from '../utilities/task-executor';
 import ProjectParser from '../utilities/project-parser';
