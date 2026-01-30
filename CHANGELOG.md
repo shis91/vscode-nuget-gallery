@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed prerelease checkbox state not being persisted across sessions
 - Fixed inline package version decorator always fetching prerelease versions regardless of the prerelease checkbox setting
 - Fixed prerelease setting synchronization between UI and configuration
+- Fixed package dependencies not loading when "All" sources is selected
+- Fixed package dependencies not parsing correctly for NuGet feeds that embed dependency data directly in the catalog entry
 
 ## [2.0.0]
 
